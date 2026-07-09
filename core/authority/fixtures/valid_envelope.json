@@ -1,0 +1,15 @@
+{
+  "envelope_id": "env-demo-001",
+  "issuer": "weaver.phase1.synthetic",
+  "subject": "demo.authority_spine.001",
+  "claim": "Verifies a synthetic authority envelope and emits a bounded receipt.",
+  "evidence_level": "E1",
+  "nonce": "nonce-demo-0001",
+  "issued_at": "2026-07-08T00:00:00Z",
+  "payload": {
+    "artifact": "demo.authority_spine.001",
+    "command": "pytest -q",
+    "fixture_policy": "synthetic-only"
+  },
+  "payload_hash": "3e9b2706e1be52aa8875e65756de96f2ccf6b2b45c90fed6f96afeb18069c293"
+}
