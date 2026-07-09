@@ -1,23 +1,30 @@
 id: demo.authority_spine.001
-name: Authority Spine Replay Demo
-claim: Verifies a synthetic authority envelope, emits a bounded receipt, and rejects replay in tests.
-evidence_level: E1
+name: Authority Spine Receipt Bundle Demo
+claim: Verifies a synthetic authority envelope, emits a bounded receipt, persists replay evidence, exports a receipt bundle, and exercises failure cases.
+evidence_level: E3-candidate
 fixture_policy: synthetic-only
 requires_network: false
 requires_secrets: false
 commands:
   run: bash forge/demos/authority_spine_001/scripts/run.sh
   verify: bash forge/demos/authority_spine_001/scripts/verify.sh
+  replay_demo: bash forge/demos/authority_spine_001/scripts/replay_demo.sh
+receipt_bundle:
+  output: forge/receipts/demo_bundle
+  verify: python -m core.authority verify-receipt --bundle forge/receipts/demo_bundle
 success_criteria:
   - valid envelope accepted
-  - bad payload hash rejected by tests
-  - replayed nonce rejected by tests
-  - receipt hash generated
+  - persistent replay db records nonce once
+  - receipt hash verifies
+  - artifact manifest hashes verify
+  - replay log is present
+  - bad payload hash failure case is exercised
+  - replayed nonce failure case is exercised
 failure_cases:
   - payload_hash_mismatch
   - replay_detected
 promotion_blockers:
-  - no CI run
-  - no local test transcript
-  - no persistent replay cache
   - no independent reproduction
+  - no cryptographic signature verification
+  - no production deployment controls
+  - no domain validation
