@@ -1,9 +1,10 @@
 # Weaver Cathedral Master Build
 
-**Status:** Master synthesis blueprint v0.1  
+**Status:** Master synthesis blueprint v0.1.1 with Phase 1 authority spine merged  
 **Date:** 2026-07-08  
-**Authority posture:** Architecture only. No production, safety, legal, medical, defense, AGI, ASI, or autonomous authority is claimed by this document.  
-**Evidence posture:** Repository-derived synthesis. Implementation must pass gates before promotion.
+**Latest evidence update:** PR #1 merged at `1cf86bc1ba7dd7d9c9bdd9270554041b7cc03579` after green CI  
+**Authority posture:** Architecture and local prototype only. No production, safety, legal, medical, defense, AGI, ASI, or autonomous authority is claimed by this document.  
+**Evidence posture:** Repository-derived synthesis plus CI-green Phase 1 authority kernel. E3 reproducibility remains blocked until receipt bundles, logs, replay package, artifact hashes, and failure transcripts exist.
 
 ---
 
@@ -23,7 +24,7 @@ Governance decides.
 The master build should therefore become a **governed agentic operating substrate** that combines:
 
 1. **Ruflo-style agent harnessing** for CLI/MCP, swarms, hooks, memory, workflows, and coding-agent orchestration.
-2. **Weaver OS verification** for signatures, replay protection, schema validation, provenance, release guardrails, and promotion discipline.
+2. **Weaver OS verification** for replay protection, schema validation, provenance, release guardrails, and promotion discipline.
 3. **ZOREL / Chronicle receipt doctrine** for authorship, artifact indexing, receipts, promotion locks, and Forge/Loom separation.
 4. **T81 deterministic substrate** for bounded reproducibility, deterministic VM concepts, governance-at-execution, and reproducibility gates.
 5. **AI Research Skills library** for model architecture, fine-tuning, inference, evaluation, RAG, safety, observability, and MLOps skill packs.
@@ -48,7 +49,30 @@ Recommended public description:
 
 ---
 
-## 3. Evidence Boundary
+## 3. Current Evidence Status
+
+```text
+Master blueprint: E1 architecture/scaffold
+Phase 1 authority kernel: E2 candidate, CI green on PR #1
+Agent runtime: pending
+Skill runtime: scaffold/spec only
+Independent reproduction: absent
+Production authority: none
+```
+
+Phase 1 is merged on `main` through PR #1:
+
+```text
+Merge SHA: 1cf86bc1ba7dd7d9c9bdd9270554041b7cc03579
+CI result: green
+Evidence basis: pytest suite, package install, CLI/module entrypoint, synthetic fixtures, bounded demo scaffold
+```
+
+E3 is **not** claimed. E3 requires receipt bundles, logs, replay instructions, artifact hashes, exercised failure transcripts, and a promotion report.
+
+---
+
+## 4. Evidence Boundary
 
 This repository is a **synthesis and staging repo**. It does not inherit every claim from the source repositories. Each imported idea must be reclassified.
 
@@ -73,7 +97,7 @@ NO BOUNDARY = NO AUTHORITY
 
 ---
 
-## 4. Source Repo Contribution Map
+## 5. Source Repo Contribution Map
 
 | Source repo | Keep | Role in master build | Promotion status |
 |---|---|---|---|
@@ -81,22 +105,22 @@ NO BOUNDARY = NO AUTHORITY
 | `Weaver_Os` | replay cache, verifier, schemas, release guard, provenance CLI, promotion discipline | Verification spine | Highest fit for core governance |
 | `zorel-kernel` | authorship receipt package, Chronicle manifest, artifact index, Forge/Loom boundary, invariants | Provenance and receipt doctrine | Preserve as governance doctrine, executable receipts preferred |
 | `t81-foundation` | deterministic stack, TISC/VM concept, Axion policy kernel, repro gate, authority levels | Deterministic execution substrate | Future hard-runtime layer |
-| `AI-Research-SKILLs` | 83 skills across research lifecycle, installer pattern, safety/RAG/eval/MLOps coverage | Skill library | Use as modular skill pack inspiration |
-| `swarms` | production multi-agent orchestration, hierarchical/parallel/graph workflows, retries, async, type safety | Multi-agent workflow layer | Use as orchestration model, do not overclaim production readiness here |
+| `AI-Research-SKILLs` | research lifecycle skills, installer pattern, safety/RAG/eval/MLOps coverage | Skill library | Use as modular skill pack inspiration |
+| `swarms` | multi-agent orchestration, hierarchical/parallel/graph workflows, retries, async, type safety | Multi-agent workflow layer | Use as orchestration model, do not overclaim production readiness here |
 | `FreeLattice` | local-first UX, IndexedDB persistence, Merkle Core, no surveillance, single-file portability | Human-facing local interface | UX layer and memory principles |
-| `Ouroboros` | sandbox execution, patch management, IPC daemon/client, ECS simulation, Weaver policy sandbox, benchmarks | Simulation and experimental policy arena | Research sandbox only |
+| `Ouroboros` | sandbox execution, patch management, IPC, ECS simulation, Weaver policy sandbox, benchmarks | Simulation and experimental policy arena | Research sandbox only |
 | `Quillan-v4.2-repo` | HNMoE/council routing idea, fallback data handling, training loop concepts | Experimental model research branch | Quarantine from authority path until cleaned/tested |
 | `ANGELA` | constitutional self-description, prompt architecture, ethical framing | Narrative/prompt layer | Must remain non-executive unless formalized/tested |
 
 ---
 
-## 5. Target Architecture
+## 6. Target Architecture
 
 ```text
 weaver-cathedral/
 
   core/
-    authority/              # signature, role, issuer, refusal, replay verification
+    authority/              # envelopes, receipts, replay checks, promotion evaluator
     provenance/             # build/release receipts, manifests, SLSA-like records
     policy/                 # constitutional and operational policies
     schemas/                # JSON schemas and typed contracts
@@ -128,29 +152,17 @@ weaver-cathedral/
     prompts/                # non-authoritative prompt templates
     archives/               # preserved but non-executive materials
 
-  interfaces/
-    cli/                    # command-line interface
-    web/                    # local-first UI / dashboard
-    api/                    # optional HTTP interface
-
   governance/
     promotion_rules.md
     evidence_ladder.md
     authority_passports.md
     source_boundary.md
     open_gap_ledger.md
-
-  tests/
-    unit/
-    integration/
-    replay/
-    security/
-    demos/
 ```
 
 ---
 
-## 6. Execution Model
+## 7. Execution Model
 
 Every operation moves through five gates:
 
@@ -175,33 +187,48 @@ No agent is allowed to promote its own output into trusted state without externa
 
 ---
 
-## 7. Master Components
+## 8. Master Components
 
-### 7.1 Authority Kernel
+### 8.1 Authority Kernel
 
-Borrow from Weaver OS and ZOREL.
+**Status:** Phase 1 merged. E2 candidate after green CI.
 
-Responsibilities:
+Implemented in PR #1:
 
-- issuer registry
-- role policy
-- signature envelope verification
-- replay cache
-- refusal verification
-- schema validation
-- promotion lock
-- release provenance
+- `core/authority/` package
+- Pydantic envelope, receipt, verification result, and promotion decision models
+- deterministic SHA-256 receipt generation and verification
+- bounded in-memory replay cache
+- verifier with schema, payload hash, and replay checks
+- fail-closed promotion evaluator
+- JSON schemas for envelope, receipt, and promotion decisions
+- synthetic fixtures
+- pytest suite
+- CLI via `weaver-authority` and `python -m core.authority`
+- GitHub Actions CI
+- authority spine demo scaffold under `forge/demos/authority_spine_001/`
 
-Minimum viable commands:
+Current commands:
 
 ```bash
-weaver verify-envelope envelope.json
-weaver verify-release dist/ manifest.json provenance.json
-weaver promote --artifact artifact.json --evidence receipts/
-weaver deny --artifact artifact.json --reason missing-replay
+python -m pip install -e ".[dev]"
+pytest -q
+python -m core.authority --help
+python -m core.authority verify core/authority/fixtures/valid_envelope.json
+python -m core.authority promote demo.authority_spine.001 E1 --evidence declared_claim,file_scaffold,risk_boundary
 ```
 
-### 7.2 Agent Harness
+Remaining boundary:
+
+```text
+Persistent replay: not implemented
+Signature verification: not implemented
+E3 receipt bundle: not complete
+Independent reproduction: absent
+Production authority: none
+```
+
+### 8.2 Agent Harness
 
 Borrow from Ruflo and Swarms.
 
@@ -228,11 +255,11 @@ Researcher    uses skill packs and citation discipline
 Operator      human-authorized execution interface
 ```
 
-### 7.3 Skill Forge
+### 8.3 Skill Forge
 
 Borrow from AI-Research-SKILLs and Ruflo plugins.
 
-Skill categories to include first:
+First categories:
 
 ```text
 research.eval
@@ -260,7 +287,7 @@ risk.md
 receipts.md
 ```
 
-### 7.4 Deterministic/Repro Layer
+### 8.4 Deterministic/Repro Layer
 
 Borrow from T81 and Weaver OS.
 
@@ -279,7 +306,7 @@ Evidence rule:
 If an output cannot be replayed from repository materials, it cannot advance beyond E1/E2 depending on available scaffolding.
 ```
 
-### 7.5 Local-First Memory and UX
+### 8.5 Local-First Memory and UX
 
 Borrow from FreeLattice.
 
@@ -302,7 +329,7 @@ receipt        immutable evidence record
 archive        preserved but non-authoritative
 ```
 
-### 7.6 Simulation and Policy Sandbox
+### 8.6 Simulation and Policy Sandbox
 
 Borrow from Ouroboros/EDEN.
 
@@ -320,11 +347,9 @@ Simulation can generate hypotheses.
 Simulation cannot certify deployment authority.
 ```
 
-### 7.7 Council / MoE Research Track
+### 8.7 Council / MoE Research Track
 
-Borrow from Quillan.
-
-Use only as a research pattern:
+Borrow from Quillan. Use only as a research pattern:
 
 - expert routing
 - council adjudication
@@ -336,7 +361,7 @@ Do not carry over unsupported consciousness, peer-validation, or authority langu
 
 ---
 
-## 8. Evidence Ladder
+## 9. Evidence Ladder
 
 ```text
 E0  Idea or symbolic concept
@@ -359,21 +384,13 @@ E4 -> E5 requires domain-specific validation.
 E5 -> E6 requires operational certification and deployment controls.
 ```
 
-Default status for this master build:
-
-```text
-Architecture: E1
-Executable authority kernel: pending
-Agent runtime: pending
-Independent reproduction: absent
-Production authority: none
-```
-
 ---
 
-## 9. Build Phases
+## 10. Build Phases
 
 ### Phase 0 — Seal the Synthesis
+
+**Status:** Complete.
 
 Deliverables:
 
@@ -383,27 +400,30 @@ Deliverables:
 - authority boundary
 - open gap ledger
 
-Exit gate:
-
-```text
-Docs are internally consistent and no source claim is promoted without evidence.
-```
-
 ### Phase 1 — Minimal Verification Spine
 
-Deliverables:
+**Status:** Completed and merged. E2 candidate.  
+**Evidence:** Green CI on PR #1, pytest suite, package install, CLI/module entrypoint, synthetic fixtures, bounded demo scaffold.  
+**Next:** Persistent replay + full receipt bundle for E3.
+
+Delivered:
 
 - `core/authority/` package
 - schema validator
-- replay cache
-- receipt generator
+- in-memory replay cache
+- receipt generator/verifier
 - pytest suite
-- CLI `weaver verify`
+- CLI/module entrypoints
+- synthetic fixtures
+- demo scaffold
+- CI workflow
 
-Exit gate:
+Exit gate status:
 
 ```text
-pytest -q passes and receipt demo replays from repo materials.
+pytest -q passes in CI.
+Receipt demo scaffold exists.
+Full E3 replay package is not yet complete.
 ```
 
 ### Phase 2 — Agent Harness Adapter
@@ -427,7 +447,7 @@ A Planner -> Builder -> Verifier workflow runs on a synthetic task and produces 
 Deliverables:
 
 - installable skill package format
-- first 10 governance/research/code skills
+- first governance/research/code skills
 - skill tests
 - skill risk metadata
 
@@ -470,7 +490,7 @@ A demo cannot self-promote without logs, receipts, and replay success.
 
 ---
 
-## 10. Non-Negotiable Boundaries
+## 11. Non-Negotiable Boundaries
 
 1. Symbolic systems may inspire UI, language, archive structure, and pedagogy, but not runtime authority.
 2. No model output is trusted by default.
@@ -482,22 +502,18 @@ A demo cannot self-promote without logs, receipts, and replay success.
 
 ---
 
-## 11. Immediate Next Files To Add
+## 12. Immediate Next Work
 
 ```text
-governance/evidence_ladder.md
-governance/open_gap_ledger.md
-governance/source_boundary.md
-governance/authority_passports.md
-core/authority/README.md
-runtime/orchestrator/README.md
-skills/SKILL_SPEC.md
-forge/demos/DEMO_SPEC.md
+1. Build persistent replay storage for E3 path.
+2. Capture authority spine demo logs, receipt bundle, artifact hashes, failure transcript, and replay instructions.
+3. Add Phase 2 agent registry and minimal Planner -> Verifier workflow.
+4. Add first governed skill under skills/governance/.
 ```
 
 ---
 
-## 12. Current Verdict
+## 13. Current Verdict
 
 This master build should not be a giant merged pile. It should be a **governed synthesis layer**.
 
@@ -518,8 +534,8 @@ ANGELA for symbolic constitutional language only
 Final posture:
 
 ```text
-MASTER BUILD CREATED AS ARCHITECTURE
+MASTER BUILD: E1 architecture with Phase 1 authority kernel at E2 candidate
 AUTHORITY DEFAULT: NONE
-PROMOTION DEFAULT: HOLD
-IMPLEMENTATION NEXT: VERIFICATION SPINE
+PROMOTION DEFAULT: HOLD beyond proven evidence
+IMPLEMENTATION NEXT: persistent replay or Phase 2 agent harness
 ```
