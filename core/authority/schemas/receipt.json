@@ -1,0 +1,57 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "Weaver Authority Receipt",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "receipt_version",
+    "envelope_id",
+    "issuer",
+    "subject",
+    "claim",
+    "evidence_level",
+    "accepted",
+    "reason",
+    "payload_hash",
+    "created_at",
+    "receipt_hash"
+  ],
+  "properties": {
+    "receipt_version": {
+      "const": "weaver.authority.receipt.v1"
+    },
+    "envelope_id": {
+      "type": "string"
+    },
+    "issuer": {
+      "type": "string"
+    },
+    "subject": {
+      "type": "string"
+    },
+    "claim": {
+      "type": "string"
+    },
+    "evidence_level": {
+      "enum": ["E0", "E1", "E2", "E3", "E4", "E5", "E6"]
+    },
+    "accepted": {
+      "type": "boolean"
+    },
+    "reason": {
+      "type": "string"
+    },
+    "payload_hash": {
+      "type": "string",
+      "pattern": "^[a-f0-9]{64}$"
+    },
+    "created_at": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "receipt_hash": {
+      "type": "string",
+      "pattern": "^[a-f0-9]{64}$"
+    }
+  }
+}
