@@ -1,0 +1,34 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "Weaver Promotion Decision",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "artifact_id",
+    "requested_level",
+    "granted",
+    "reason",
+    "required_missing"
+  ],
+  "properties": {
+    "artifact_id": {
+      "type": "string",
+      "minLength": 1
+    },
+    "requested_level": {
+      "enum": ["E0", "E1", "E2", "E3", "E4", "E5", "E6"]
+    },
+    "granted": {
+      "type": "boolean"
+    },
+    "reason": {
+      "type": "string"
+    },
+    "required_missing": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    }
+  }
+}
