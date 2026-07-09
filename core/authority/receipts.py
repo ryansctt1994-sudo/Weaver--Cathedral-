@@ -20,12 +20,40 @@ def canonical_json(value: Any) -> str:
     return json.dumps(value, sort_keys=True, separators=(",", ":"), ensure_ascii=False)
 
 
+def canonical_timestamp(value: datetime) -> str:
+    """Return the exact timestamp form used inside receipt hashes."""
+
+    return value.astimezone(timezone.utc).isoformat()
+
+
 def sha256_json(value: Any) -> str:
     return hashlib.sha256(canonical_json(value).encode("utf-8")).hexdigest()
 
 
 def payload_hash(payload: dict[str, Any]) -> str:
     return sha256_json(payload)
+
+
+def receipt_hash_base(receipt: Receipt) -> dict[str, Any]:
+    """Build the canonical hash base for a receipt.
+
+    Pydantic may serialize UTC datetimes with a trailing ``Z`` in JSON mode,
+    while ``datetime.isoformat()`` emits ``+00:00``. The receipt hash must not
+    depend on that serializer detail, so we normalize explicitly here.
+    """
+
+    return {
+        "receipt_version": receipt.receipt_version,
+        "envelope_id": receipt.envelope_id,
+        "issuer": receipt.issuer,
+        "subject": receipt.subject,
+        "claim": receipt.claim,
+        "evidence_level": receipt.evidence_level,
+        "accepted": receipt.accepted,
+        "reason": receipt.reason,
+        "payload_hash": receipt.payload_hash,
+        "created_at": canonical_timestamp(receipt.created_at),
+    }
 
 
 def generate_receipt(
@@ -42,8 +70,6 @@ def generate_receipt(
     """
 
     timestamp = created_at or datetime.now(timezone.utc)
-    timestamp = timestamp.astimezone(timezone.utc)
-
     base = {
         "receipt_version": "weaver.authority.receipt.v1",
         "envelope_id": envelope.envelope_id,
@@ -54,13 +80,11 @@ def generate_receipt(
         "accepted": accepted,
         "reason": reason,
         "payload_hash": envelope.payload_hash,
-        "created_at": timestamp.isoformat(),
+        "created_at": canonical_timestamp(timestamp),
     }
 
     return Receipt(**base, receipt_hash=sha256_json(base))
 
 
 def verify_receipt(receipt: Receipt) -> bool:
-    base = receipt.model_dump(mode="json")
-    expected = base.pop("receipt_hash")
-    return sha256_json(base) == expected
+    return sha256_json(receipt_hash_base(receipt)) == receipt.receipt_hash
