@@ -19,6 +19,9 @@ dev = [
 [project.scripts]
 weaver-authority = "core.authority.cli:main"
 
+[tool.setuptools.packages.find]
+include = ["core*"]
+
 [tool.pytest.ini_options]
 testpaths = ["core/authority/tests"]
 pythonpath = ["."]
