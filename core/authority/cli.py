@@ -1,4 +1,4 @@
-"""CLI for the Phase 1 authority spine."""
+"""CLI for the authority spine."""
 
 from __future__ import annotations
 
@@ -7,10 +7,15 @@ import json
 import sys
 from pathlib import Path
 
+from .bundles import build_receipt_bundle, verify_receipt_bundle
 from .models import AuthorityEnvelope
 from .receipts import generate_receipt
 from .replay import InMemoryReplayCache
 from .verifier import evaluate_promotion, verify_envelope
+
+
+DEFAULT_ENVELOPE = "core/authority/fixtures/valid_envelope.json"
+DEFAULT_FAILURE_FIXTURE = "core/authority/fixtures/bad_hash_envelope.json"
 
 
 def load_json(path: str) -> dict:
@@ -29,6 +34,23 @@ def cmd_receipt(args: argparse.Namespace) -> int:
     receipt = generate_receipt(envelope, accepted=args.accepted, reason=args.reason)
     print(receipt.model_dump_json(indent=2))
     return 0
+
+
+def cmd_demo_receipt(args: argparse.Namespace) -> int:
+    bundle = build_receipt_bundle(
+        args.envelope,
+        args.output,
+        failure_fixture_path=args.failure_fixture,
+        fresh=not args.keep_existing,
+    )
+    print(json.dumps({"bundle": bundle.as_posix(), "created": True}, indent=2, sort_keys=True))
+    return 0
+
+
+def cmd_verify_receipt(args: argparse.Namespace) -> int:
+    result = verify_receipt_bundle(args.bundle)
+    print(json.dumps(result, indent=2, sort_keys=True))
+    return 0 if result["valid"] else 1
 
 
 def cmd_promote(args: argparse.Namespace) -> int:
@@ -51,6 +73,17 @@ def build_parser() -> argparse.ArgumentParser:
     receipt.add_argument("--accepted", action="store_true")
     receipt.add_argument("--reason", default="manual_receipt")
     receipt.set_defaults(func=cmd_receipt)
+
+    demo_receipt = sub.add_parser("demo-receipt", help="Generate an E3-candidate receipt bundle")
+    demo_receipt.add_argument("--envelope", default=DEFAULT_ENVELOPE)
+    demo_receipt.add_argument("--failure-fixture", default=DEFAULT_FAILURE_FIXTURE)
+    demo_receipt.add_argument("--output", default="forge/receipts/demo_bundle")
+    demo_receipt.add_argument("--keep-existing", action="store_true", help="Do not remove an existing bundle directory first")
+    demo_receipt.set_defaults(func=cmd_demo_receipt)
+
+    verify_receipt = sub.add_parser("verify-receipt", help="Verify an E3-candidate receipt bundle")
+    verify_receipt.add_argument("--bundle", required=True)
+    verify_receipt.set_defaults(func=cmd_verify_receipt)
 
     promote = sub.add_parser("promote", help="Evaluate promotion evidence")
     promote.add_argument("artifact_id")
