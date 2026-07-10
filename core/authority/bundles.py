@@ -10,6 +10,7 @@ import hashlib
 import json
 from pathlib import Path
 import shutil
+import sqlite3
 from typing import Any
 
 from .models import AuthorityEnvelope, Receipt
@@ -49,6 +50,85 @@ def sha256_file(path: str | Path) -> str:
         for chunk in iter(lambda: handle.read(1024 * 1024), b""):
             h.update(chunk)
     return h.hexdigest()
+
+
+def _canonical_json(value: Any) -> str:
+    return json.dumps(value, sort_keys=True, separators=(",", ":"), ensure_ascii=False)
+
+
+def replay_record_hash(record: dict[str, Any]) -> str:
+    base = {
+        "nonce": record.get("nonce"),
+        "envelope_id": record.get("envelope_id"),
+        "payload_hash": record.get("payload_hash"),
+        "created_at": record.get("created_at"),
+    }
+    return hashlib.sha256(_canonical_json(base).encode("utf-8")).hexdigest()
+
+
+def load_replay_log(path: str | Path) -> tuple[list[dict[str, Any]], list[str]]:
+    records: list[dict[str, Any]] = []
+    failures: list[str] = []
+    for index, line in enumerate(Path(path).read_text(encoding="utf-8").splitlines(), start=1):
+        if not line:
+            continue
+        try:
+            value = json.loads(line)
+        except json.JSONDecodeError:
+            failures.append(f"invalid_replay_log_json:line_{index}")
+            continue
+        if not isinstance(value, dict):
+            failures.append(f"invalid_replay_log_record:line_{index}")
+            continue
+        records.append(value)
+    return records, failures
+
+
+def load_replay_db(path: str | Path) -> tuple[list[dict[str, Any]], list[str]]:
+    failures: list[str] = []
+    try:
+        with sqlite3.connect(str(path)) as conn:
+            conn.row_factory = sqlite3.Row
+            rows = conn.execute(
+                """
+                SELECT nonce, envelope_id, payload_hash, created_at, record_hash
+                FROM replay_log
+                ORDER BY created_at, nonce
+                """
+            ).fetchall()
+    except sqlite3.Error as exc:
+        return [], [f"invalid_replay_db:{exc.__class__.__name__}"]
+    return [dict(row) for row in rows], failures
+
+
+def verify_replay_evidence(
+    envelope: AuthorityEnvelope,
+    replay_log_records: list[dict[str, Any]],
+    replay_db_records: list[dict[str, Any]],
+) -> tuple[bool, list[str]]:
+    failures: list[str] = []
+
+    if replay_log_records != replay_db_records:
+        failures.append("replay_log_db_mismatch")
+
+    if len(replay_db_records) != 1:
+        failures.append(f"unexpected_replay_record_count:{len(replay_db_records)}")
+        return False, failures
+
+    record = replay_db_records[0]
+    expected = {
+        "nonce": envelope.nonce,
+        "envelope_id": envelope.envelope_id,
+        "payload_hash": envelope.payload_hash,
+    }
+    for key, expected_value in expected.items():
+        if record.get(key) != expected_value:
+            failures.append(f"replay_record_{key}_mismatch")
+
+    if replay_record_hash(record) != record.get("record_hash"):
+        failures.append("replay_record_hash_mismatch")
+
+    return not failures, failures
 
 
 def build_failure_case_report(
@@ -96,7 +176,8 @@ def write_replay_instructions(output_dir: Path) -> Path:
         "```bash\n"
         f"python -m core.authority verify-receipt --bundle {output_dir.as_posix()}\n"
         "```\n\n"
-        "Expected result: `valid: true` with matching receipt, manifest, payload, replay log, and failure-case checks.\n",
+        "Expected result: `valid: true` with matching receipt, manifest, payload, replay database, "
+        "replay log, stored record hash, and failure-case checks.\n",
         encoding="utf-8",
     )
 
@@ -199,14 +280,32 @@ def verify_receipt_bundle(bundle_dir: str | Path) -> dict[str, Any]:
     result = load_json(bundle / "verification_result.json")
     failure_report = load_json(bundle / "failure_case_report.json")
     manifest = load_json(bundle / "artifact_manifest.json")
-    replay_log_lines = [line for line in (bundle / "replay.log").read_text(encoding="utf-8").splitlines() if line]
+    replay_log_records, replay_log_failures = load_replay_log(bundle / "replay.log")
+    replay_db_records, replay_db_failures = load_replay_db(bundle / "replay.db")
 
     checks["receipt_hash_valid"] = verify_receipt(receipt)
     checks["payload_hash_valid"] = payload_hash(envelope.payload) == envelope.payload_hash
     checks["receipt_matches_result"] = result.get("receipt_hash") == receipt.receipt_hash
-    checks["receipt_matches_envelope"] = receipt.envelope_id == envelope.envelope_id and receipt.payload_hash == envelope.payload_hash
+    checks["receipt_matches_envelope"] = (
+        receipt.envelope_id == envelope.envelope_id
+        and receipt.payload_hash == envelope.payload_hash
+    )
     checks["failure_cases_passed"] = bool(failure_report.get("all_passed"))
-    checks["replay_log_present"] = len(replay_log_lines) > 0
+    checks["replay_log_present"] = len(replay_log_records) > 0
+    checks["replay_log_failures"] = replay_log_failures
+    checks["replay_db_failures"] = replay_db_failures
+
+    replay_evidence_valid, replay_evidence_failures = verify_replay_evidence(
+        envelope,
+        replay_log_records,
+        replay_db_records,
+    )
+    checks["replay_evidence_valid"] = (
+        not replay_log_failures and not replay_db_failures and replay_evidence_valid
+    )
+    checks["replay_evidence_failures"] = (
+        replay_log_failures + replay_db_failures + replay_evidence_failures
+    )
 
     manifest_valid, manifest_failures = verify_artifact_manifest(bundle, manifest)
     checks["artifact_manifest_valid"] = manifest_valid
@@ -222,6 +321,7 @@ def verify_receipt_bundle(bundle_dir: str | Path) -> dict[str, Any]:
             "receipt_matches_envelope",
             "failure_cases_passed",
             "replay_log_present",
+            "replay_evidence_valid",
             "artifact_manifest_valid",
         ]
     )
