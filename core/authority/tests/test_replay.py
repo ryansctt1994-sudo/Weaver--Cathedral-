@@ -15,7 +15,7 @@ def test_replay_cache_can_clear():
     assert cache.check_and_store("nonce-abcdef")
 
 
-def test_persistent_replay_cache_records_and_rejects_replay(tmp_path):
+def test_persistent_replay_cache_records_and_rejects_replay_after_restart(tmp_path):
     db_path = tmp_path / "replay.db"
     cache = PersistentReplayCache(db_path)
     try:
@@ -39,5 +39,11 @@ def test_persistent_replay_cache_records_and_rejects_replay(tmp_path):
     reopened = PersistentReplayCache(db_path)
     try:
         assert reopened.contains("nonce-persistent-001")
+        assert not reopened.check_and_store(
+            "nonce-persistent-001",
+            payload_hash="a" * 64,
+            envelope_id="env-persistent-001",
+        )
+        assert len(reopened.records()) == 1
     finally:
         reopened.close()
