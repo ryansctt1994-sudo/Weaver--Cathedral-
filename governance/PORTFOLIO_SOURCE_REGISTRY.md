@@ -100,6 +100,22 @@ mint its own authority or evidence level.
 | Weavers-Forge- | 13 | MIT; account-authored | Reference | Community/contribution documentation |
 | zorel-kernel | 13 | MIT; account-authored | Core concepts | Provenance receipt patterns; E3 label downgraded unless independently replayed |
 
+## Consolidation evidence at handoff
+
+- [Weaver_Os PR #34](https://github.com/ryansctt1994-sudo/Weaver_Os/pull/34):
+  Assurance v2 Python and Icarus RTL jobs pass.
+- [Weaver--Cathedral- PR #4](https://github.com/ryansctt1994-sudo/Weaver--Cathedral-/pull/4):
+  Agent OS v2 and the existing Cathedral CI pass.
+- [Math_Build1994 PR #5](https://github.com/ryansctt1994-sudo/Math_Build1994/pull/5):
+  Auto Scientist v2 Python CI passes.
+- The dependency-free local suites pass 26/26: Assurance 8, Agent OS 8,
+  Auto Scientist 10.
+- Legacy workflows are path-scoped so package-only changes do not pretend to
+  validate untouched legacy systems. When legacy Weaver code changes, its
+  existing verifier failures and lint backlog still fail normally. When the
+  root MathBuild proof changes, its existing Lake-manifest setup gap still
+  fails normally. Those are follow-up work, not silently waived gates.
+
 ## Known non-claims and open gates
 
 - The audit found candidates; it did not certify all 61 repositories as safe,
