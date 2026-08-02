@@ -2,7 +2,7 @@
 
 The confirmation protocol is deliberately separated from test execution:
 
-1. Verify that the declared target is inside an explicit authorized scope.
+1. Verify that the declared target is inside an explicit scope boundary.
 2. Require a baseline observation and at least two test observations.
 3. Compare structured measurements and require a reproducible difference.
 4. Suppress duplicate target/vector findings within the supplied registry.
@@ -39,11 +39,13 @@ def _validate_scalar(value: Scalar) -> None:
 
 
 @dataclass(frozen=True)
-class AuthorizedScope:
+class ScopeBoundary:
     """An explicit, exact-match target allowlist.
 
     Exact matching is intentional. Broader domain or network expansion belongs
     in an independently reviewed scope resolver, not in finding confirmation.
+    Boundary membership is necessary but does not itself prove that execution
+    was legally or organizationally authorized.
     """
 
     scope_id: str
@@ -213,7 +215,7 @@ def _result(
 
 def confirm_finding(
     *,
-    scope: AuthorizedScope,
+    scope: ScopeBoundary,
     target: str,
     test_vector: str,
     baseline: Observation,
@@ -241,7 +243,7 @@ def confirm_finding(
     if not scope.contains(target):
         return _result(
             status="REJECTED",
-            reason="target_out_of_scope",
+            reason="target_outside_scope_boundary",
             scope_id=scope.scope_id,
             target=target,
             test_vector=test_vector,
@@ -329,7 +331,7 @@ def confirm_finding(
     registry.record(fingerprint)
     return _result(
         status="CONFIRMED",
-        reason="authorized_reproducible_difference",
+        reason="scope_bound_reproducible_difference",
         scope_id=scope.scope_id,
         target=target,
         test_vector=test_vector,
