@@ -1,7 +1,7 @@
 from core.findings import (
-    AuthorizedScope,
     FindingRegistry,
     Observation,
+    ScopeBoundary,
     confirm_finding,
     finding_fingerprint,
 )
@@ -20,7 +20,7 @@ def observation(observation_id: str, *, status: int, role: str = "viewer") -> Ob
 
 def confirm(registry: FindingRegistry | None = None):
     return confirm_finding(
-        scope=AuthorizedScope("scope-001", frozenset({TARGET})),
+        scope=ScopeBoundary("scope-001", frozenset({TARGET})),
         target=TARGET,
         test_vector="authorization-boundary-check",
         baseline=observation("baseline", status=403),
@@ -32,11 +32,11 @@ def confirm(registry: FindingRegistry | None = None):
     )
 
 
-def test_confirms_authorized_reproducible_difference_with_o0_receipt():
+def test_confirms_scope_bound_reproducible_difference_with_o0_receipt():
     result = confirm()
 
     assert result.status == "CONFIRMED"
-    assert result.reason == "authorized_reproducible_difference"
+    assert result.reason == "scope_bound_reproducible_difference"
     assert result.authority == "EVIDENCE_ONLY"
     assert result.operational_authority == "O0"
     assert len(result.receipt_hash) == 64
@@ -46,9 +46,9 @@ def test_confirms_authorized_reproducible_difference_with_o0_receipt():
     )
 
 
-def test_rejects_target_outside_exact_authorized_scope():
+def test_rejects_target_outside_exact_scope_boundary():
     result = confirm_finding(
-        scope=AuthorizedScope("scope-001", frozenset({"service://other"})),
+        scope=ScopeBoundary("scope-001", frozenset({"service://other"})),
         target=TARGET,
         test_vector="authorization-boundary-check",
         baseline=observation("baseline", status=403),
@@ -57,12 +57,12 @@ def test_rejects_target_outside_exact_authorized_scope():
     )
 
     assert result.status == "REJECTED"
-    assert result.reason == "target_out_of_scope"
+    assert result.reason == "target_outside_scope_boundary"
 
 
 def test_rejects_a_single_test_run_as_not_reproduced():
     result = confirm_finding(
-        scope=AuthorizedScope("scope-001", frozenset({TARGET})),
+        scope=ScopeBoundary("scope-001", frozenset({TARGET})),
         target=TARGET,
         test_vector="authorization-boundary-check",
         baseline=observation("baseline", status=403),
@@ -76,7 +76,7 @@ def test_rejects_a_single_test_run_as_not_reproduced():
 
 def test_rejects_when_comparison_has_no_measurable_difference():
     result = confirm_finding(
-        scope=AuthorizedScope("scope-001", frozenset({TARGET})),
+        scope=ScopeBoundary("scope-001", frozenset({TARGET})),
         target=TARGET,
         test_vector="authorization-boundary-check",
         baseline=observation("baseline", status=403),
@@ -90,7 +90,7 @@ def test_rejects_when_comparison_has_no_measurable_difference():
 
 def test_rejects_non_reproducible_differences():
     result = confirm_finding(
-        scope=AuthorizedScope("scope-001", frozenset({TARGET})),
+        scope=ScopeBoundary("scope-001", frozenset({TARGET})),
         target=TARGET,
         test_vector="authorization-boundary-check",
         baseline=observation("baseline", status=403),
