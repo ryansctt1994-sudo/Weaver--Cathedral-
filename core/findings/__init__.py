@@ -5,19 +5,19 @@ targets, grant authority, or promote findings beyond their supporting evidence.
 """
 
 from .confirmation import (
-    AuthorizedScope,
     ConfirmationResult,
     FindingRegistry,
     Observation,
+    ScopeBoundary,
     confirm_finding,
     finding_fingerprint,
 )
 
 __all__ = [
-    "AuthorizedScope",
     "ConfirmationResult",
     "FindingRegistry",
     "Observation",
+    "ScopeBoundary",
     "confirm_finding",
     "finding_fingerprint",
 ]
