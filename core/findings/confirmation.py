@@ -23,7 +23,8 @@ from typing import Literal, Mapping, TypeAlias
 
 
 Scalar: TypeAlias = str | int | float | bool | None
-Difference: TypeAlias = tuple[str, Scalar, Scalar]
+# key, baseline_present, baseline_value, observed_present, observed_value
+Difference: TypeAlias = tuple[str, bool, Scalar, bool, Scalar]
 ConfirmationStatus: TypeAlias = Literal["CONFIRMED", "REJECTED", "DUPLICATE"]
 
 
@@ -141,11 +142,33 @@ def finding_fingerprint(scope_id: str, target: str, test_vector: str) -> str:
 
 def _differences(baseline: Observation, observed: Observation) -> tuple[Difference, ...]:
     keys = sorted(set(baseline.measurements) | set(observed.measurements))
-    return tuple(
-        (key, baseline.measurements.get(key), observed.measurements.get(key))
-        for key in keys
-        if baseline.measurements.get(key) != observed.measurements.get(key)
-    )
+    differences: list[Difference] = []
+
+    for key in keys:
+        baseline_present = key in baseline.measurements
+        observed_present = key in observed.measurements
+        baseline_value = baseline.measurements[key] if baseline_present else None
+        observed_value = observed.measurements[key] if observed_present else None
+
+        values_equal = (
+            baseline_present == observed_present
+            and (
+                not baseline_present
+                or _canonical_json(baseline_value) == _canonical_json(observed_value)
+            )
+        )
+        if not values_equal:
+            differences.append(
+                (
+                    key,
+                    baseline_present,
+                    baseline_value,
+                    observed_present,
+                    observed_value,
+                )
+            )
+
+    return tuple(differences)
 
 
 def _receipt_hash(
