@@ -24,7 +24,7 @@ action.
 |---|---|---|
 | Explicit scope control | Exact-match `ScopeBoundary` allowlist | Boundary membership is not proof of legal or organizational authorization |
 | Baseline → test → compare | Structured baseline plus at least two test observations | Observation only; no execution capability |
-| Measurable, reproducible difference | Stable canonical difference across all test runs | A difference is evidence, not a vulnerability severity claim |
+| Measurable, reproducible difference | Stable, type-aware canonical difference across all test runs | Missing, null, boolean, integer, and float values remain distinguishable |
 | Duplicate suppression | SHA-256 fingerprint over scope + target + test vector | Session-local registry only |
 | Structured findings | Deterministic result and receipt hash | `EVIDENCE_ONLY`, operational authority `O0` |
 
@@ -81,9 +81,10 @@ Run:
 pytest core/authority/tests/test_finding_confirmation.py -q
 ```
 
-The tests cover confirmed, out-of-scope, insufficient-reproduction,
-no-difference, inconsistent-difference, duplicate, and deterministic-fingerprint
-paths.
+The 11 tests cover confirmed, out-of-scope, insufficient-reproduction,
+no-difference, inconsistent-difference, duplicate, deterministic-fingerprint,
+deterministic-receipt, missing-versus-null, boolean-versus-integer, and
+observation-immutability paths.
 
 Passing local or CI tests can support an E2 implementation claim for this
 bounded module. E3 still requires a committed receipt bundle, logs, artifact
