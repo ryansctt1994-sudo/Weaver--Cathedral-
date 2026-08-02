@@ -41,8 +41,8 @@ def test_confirms_scope_bound_reproducible_difference_with_o0_receipt():
     assert result.operational_authority == "O0"
     assert len(result.receipt_hash) == 64
     assert result.differences == (
-        ("observed_role", "viewer", "admin"),
-        ("response_status", 403, 200),
+        ("observed_role", True, "viewer", True, "admin"),
+        ("response_status", True, 403, True, 200),
     )
 
 
@@ -133,3 +133,48 @@ def test_receipt_is_deterministic_and_binds_observation_digests():
     assert first.baseline_digest
     assert len(first.test_run_digests) == 2
     assert first.test_run_digests[0] != first.test_run_digests[1]
+
+
+def test_distinguishes_missing_measurement_from_explicit_null():
+    baseline = Observation("baseline", TARGET, {"stable": 1})
+    first = Observation("test-1", TARGET, {"stable": 1, "optional": None})
+    second = Observation("test-2", TARGET, {"stable": 1, "optional": None})
+
+    result = confirm_finding(
+        scope=ScopeBoundary("scope-001", frozenset({TARGET})),
+        target=TARGET,
+        test_vector="schema-presence-check",
+        baseline=baseline,
+        test_runs=(first, second),
+        registry=FindingRegistry(),
+    )
+
+    assert result.status == "CONFIRMED"
+    assert result.differences == (("optional", False, None, True, None),)
+
+
+def test_distinguishes_boolean_from_integer_measurement():
+    baseline = Observation("baseline", TARGET, {"flag": True})
+    first = Observation("test-1", TARGET, {"flag": 1})
+    second = Observation("test-2", TARGET, {"flag": 1})
+
+    result = confirm_finding(
+        scope=ScopeBoundary("scope-001", frozenset({TARGET})),
+        target=TARGET,
+        test_vector="measurement-type-check",
+        baseline=baseline,
+        test_runs=(first, second),
+        registry=FindingRegistry(),
+    )
+
+    assert result.status == "CONFIRMED"
+    assert result.differences == (("flag", True, True, True, 1),)
+
+
+def test_observation_copies_measurements_before_digesting():
+    measurements = {"response_status": 403}
+    captured = Observation("baseline", TARGET, measurements)
+
+    measurements["response_status"] = 200
+
+    assert captured.measurements["response_status"] == 403
