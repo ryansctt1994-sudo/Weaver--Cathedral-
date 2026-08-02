@@ -106,6 +106,7 @@ NO BOUNDARY = NO AUTHORITY
 | `zorel-kernel` | authorship receipt package, Chronicle manifest, artifact index, Forge/Loom boundary, invariants | Provenance and receipt doctrine | Preserve as governance doctrine, executable receipts preferred |
 | `t81-foundation` | deterministic stack, TISC/VM concept, Axion policy kernel, repro gate, authority levels | Deterministic execution substrate | Future hard-runtime layer |
 | `AI-Research-SKILLs` | research lifecycle skills, installer pattern, safety/RAG/eval/MLOps coverage | Skill library | Use as modular skill pack inspiration |
+| `CyberStrike` | exact scope check, baseline/test comparison, reproducible-difference gate, duplicate suppression | Defensive findings evidence pattern | Clean-room implementation candidate; no offensive runtime or AGPL code imported |
 | `swarms` | multi-agent orchestration, hierarchical/parallel/graph workflows, retries, async, type safety | Multi-agent workflow layer | Use as orchestration model, do not overclaim production readiness here |
 | `FreeLattice` | local-first UX, IndexedDB persistence, Merkle Core, no surveillance, single-file portability | Human-facing local interface | UX layer and memory principles |
 | `Ouroboros` | sandbox execution, patch management, IPC, ECS simulation, Weaver policy sandbox, benchmarks | Simulation and experimental policy arena | Research sandbox only |
