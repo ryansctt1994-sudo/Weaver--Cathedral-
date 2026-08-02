@@ -22,7 +22,7 @@ action.
 
 | CyberStrike concept | Weaver Cathedral adaptation | Boundary |
 |---|---|---|
-| Explicit scope control | Exact-match `AuthorizedScope` allowlist | No implicit subdomain, network, or target expansion |
+| Explicit scope control | Exact-match `ScopeBoundary` allowlist | Boundary membership is not proof of legal or organizational authorization |
 | Baseline → test → compare | Structured baseline plus at least two test observations | Observation only; no execution capability |
 | Measurable, reproducible difference | Stable canonical difference across all test runs | A difference is evidence, not a vulnerability severity claim |
 | Duplicate suppression | SHA-256 fingerprint over scope + target + test vector | Session-local registry only |
@@ -71,6 +71,7 @@ reproducible difference?
 6. Duplicate identity is bound to scope, exact target, and test vector.
 7. A confirmed result remains `EVIDENCE_ONLY` at operational authority `O0`.
 8. No result self-promotes on the evidence ladder.
+9. Scope-bound means inside the declared boundary; it does not mean execution was authorized.
 
 ## Verification
 
