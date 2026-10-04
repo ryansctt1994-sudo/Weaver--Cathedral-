@@ -1,12 +1,14 @@
-# Weaver Cathedral Master Build
+# Weaver Cathedral Integration Build
 
-**Status:** Master synthesis blueprint v0.1.1 with Phase 1 authority spine merged  
+**Status:** Integration/staging blueprint v0.1.1 with Phase 1 authority spine merged  
 **Date:** 2026-07-08  
 **Latest evidence update:** PR #1 merged at `1cf86bc1ba7dd7d9c9bdd9270554041b7cc03579` after green CI  
 **Authority posture:** Architecture and local prototype only. No production, safety, legal, medical, defense, AGI, ASI, or autonomous authority is claimed by this document.  
 **Evidence posture:** Repository-derived synthesis plus CI-green Phase 1 authority kernel. E3 reproducibility remains blocked until receipt bundles, logs, replay package, artifact hashes, and failure transcripts exist.
 
 ---
+
+> **Portfolio role:** this repository is a secondary synthesis/integration surface. It does not supersede `Weaver_Os`, which is the canonical portfolio verification anchor. Evidence from source repositories does not automatically transfer here; imported ideas must earn their own implementation and verification status in this repository.
 
 ## 1. Core Thesis
 
@@ -36,10 +38,10 @@ The master build should therefore become a **governed agentic operating substrat
 
 ---
 
-## 2. Master Build Name
+## 2. Integration Build Name
 
 ```text
-WEAVER CATHEDRAL MASTER BUILD v0.1
+WEAVER CATHEDRAL INTEGRATION BUILD v0.1
 Codename: FORGE-CROWN
 ```
 
