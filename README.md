@@ -1,5 +1,8 @@
 # Weaver Cathedral Integration Build
 
+> [!NOTE]
+> **Portfolio crosswalk — 2026-10-06:** This staging repository uses local evidence-language inherited from earlier handoffs. Its `E3` wording must not be treated as automatic equivalence to the current portfolio ladder. Portfolio-wide state remains **E2 ceiling / W0 / O0 / production prohibited / E4 not earned**; synthesis does not inherit evidence from source repos.
+
 **Status:** Integration/staging blueprint v0.1.1 with Phase 1 authority spine merged  
 **Date:** 2026-07-08  
 **Latest evidence update:** PR #1 merged at `1cf86bc1ba7dd7d9c9bdd9270554041b7cc03579` after green CI  
