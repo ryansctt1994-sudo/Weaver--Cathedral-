@@ -2,7 +2,7 @@ name: CI
 
 on:
   push:
-    branches: ["main", "phase-1-authority-spine"]
+    branches: ["main", "phase-1-authority-spine", "feat/e3-authority-receipts"]
   pull_request:
     branches: ["main"]
 
@@ -24,3 +24,6 @@ jobs:
 
       - name: Run tests
         run: pytest -q
+
+      - name: Run authority receipt bundle demo
+        run: bash forge/demos/authority_spine_001/scripts/replay_demo.sh
