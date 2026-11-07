@@ -8,3 +8,6 @@ dist/
 
 # Evidence bundles are built by CI and uploaded as artifacts, not committed
 forge/demos/authority_spine_001/bundle/
+
+# Gate state (chronicle and lock), written by runtime/claude_code_gate
+.weaver/
