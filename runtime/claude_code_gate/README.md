@@ -54,6 +54,7 @@ A person adds this to `.claude/settings.json` and commits it. The agent cannot c
           {
             "type": "command",
             "command": "bash \"$CLAUDE_PROJECT_DIR/runtime/claude_code_gate/gate.sh\"",
+            "timeout": 10,
             "onFailure": "block"
           }
         ]
@@ -64,6 +65,8 @@ A person adds this to `.claude/settings.json` and commits it. The agent cannot c
 ```
 
 `gate.sh` remains in place even with `onFailure`, so a crash is blocked on any Claude Code version that does not honour the field.
+
+`timeout` is set because a timed-out hook fails open unless `onFailure` is `block`. Tested on 2.1.319: a hook that sleeps past a 2-second timeout let the write through with no `onFailure`, and blocked it with `onFailure: "block"`. The gate's own lock wait is bounded (`WEAVER_GATE_LOCK_TIMEOUT`, default 5 seconds) and fails closed, so the hook returns well inside the timeout.
 
 ## Verified in this environment
 

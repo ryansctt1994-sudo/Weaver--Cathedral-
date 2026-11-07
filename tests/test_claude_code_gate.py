@@ -375,3 +375,24 @@ def test_wrapper_turns_a_missing_interpreter_into_a_block(project):
     result = _wrapper(payload("Read", {"file_path": "src/app.py"}), env)
     assert result.returncode == 2
     assert "crashed" in result.stderr
+
+
+def test_hook_blocks_instead_of_waiting_forever_on_a_busy_lock(project):
+    import fcntl
+    import time
+
+    state = project / ".weaver" / "gate"
+    state.mkdir(parents=True)
+    holder = open(state / "lock", "a")
+    fcntl.flock(holder, fcntl.LOCK_EX)
+    try:
+        started = time.monotonic()
+        result = run_hook(project, payload("Read", {"file_path": "src/app.py"}, str(project)),
+                          extra_env={"WEAVER_GATE_LOCK_TIMEOUT": "0.5"})
+        elapsed = time.monotonic() - started
+    finally:
+        fcntl.flock(holder, fcntl.LOCK_UN)
+        holder.close()
+    assert result.returncode == 2
+    assert "chronicle lock busy" in result.stderr
+    assert elapsed < 10, elapsed

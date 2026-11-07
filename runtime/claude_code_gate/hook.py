@@ -23,6 +23,7 @@ import fcntl
 import json
 import os
 import sys
+import time
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any, Mapping, TextIO
@@ -34,6 +35,33 @@ from runtime.claude_code_gate.policy import POLICY_VERSION, decide
 THRESHOLD = 0.7
 STATE_DIR = Path(".weaver") / "gate"
 DENIAL_SCHEMA = "weaver.claude_code_gate.denial.v1"
+DEFAULT_LOCK_TIMEOUT_S = 5.0
+
+
+class LockTimeout(RuntimeError):
+    """The chronicle lock was not free within the deadline. The call is blocked."""
+
+
+def acquire_lock(lock_file, timeout_s: float) -> None:
+    """Take an exclusive lock, waiting at most timeout_s. Never waits without a bound."""
+    deadline = time.monotonic() + timeout_s
+    while True:
+        try:
+            fcntl.flock(lock_file, fcntl.LOCK_EX | fcntl.LOCK_NB)
+            return
+        except BlockingIOError:
+            if time.monotonic() >= deadline:
+                raise LockTimeout(f"chronicle lock busy for {timeout_s}s") from None
+            time.sleep(0.02)
+
+
+def lock_timeout(env: Mapping[str, str]) -> float:
+    raw = env.get("WEAVER_GATE_LOCK_TIMEOUT")
+    try:
+        value = float(raw) if raw else DEFAULT_LOCK_TIMEOUT_S
+    except ValueError:
+        return DEFAULT_LOCK_TIMEOUT_S
+    return value if value > 0 else DEFAULT_LOCK_TIMEOUT_S
 
 
 def resolve_role(payload: Mapping[str, Any], env: Mapping[str, str]) -> Any:
@@ -76,7 +104,7 @@ def run_hook(stdin: TextIO, stderr: TextIO, env: Mapping[str, str], now: datetim
     state = root / STATE_DIR
     state.mkdir(parents=True, exist_ok=True)
     with open(state / "lock", "a") as lock:
-        fcntl.flock(lock, fcntl.LOCK_EX)
+        acquire_lock(lock, lock_timeout(env))
         gate = UncertaintyGate(threshold=THRESHOLD, chronicle=Chronicle(state / "chronicle.jsonl"))
         record = gate.evaluate(
             {"tool": tool_name, "input": tool_input, "role": role},
@@ -97,6 +125,9 @@ def run_hook(stdin: TextIO, stderr: TextIO, env: Mapping[str, str], now: datetim
 def main() -> int:
     try:
         return run_hook(sys.stdin, sys.stderr, dict(os.environ))
+    except LockTimeout as exc:
+        print(f"Weaver gate: {exc}; blocking.", file=sys.stderr)
+        return 2
     except Exception as exc:  # noqa: BLE001 - any failure must block, never pass
         print(f"Weaver gate error ({type(exc).__name__}); blocking.", file=sys.stderr)
         return 2
