@@ -25,14 +25,14 @@ from __future__ import annotations
 import hashlib
 import hmac
 import math
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 from datetime import datetime, timedelta, timezone
 from enum import Enum
 from typing import Any, Mapping, Sequence
 
 from .canonical import JCS_RFC8785, canonicalize, profiled_sha256
 from .chronicle import Chronicle
-from .replay import InMemoryReplayCache, ReplayStore
+from .replay import ReplayStore
 
 MIN_KEY_BYTES = 32
 OVERRIDE_VERSION = "weaver.gate.override.v1"
@@ -123,9 +123,11 @@ class UncertaintyGate:
 
     threshold: float
     override_key: bytes | None = None
-    # Use a SqliteReplayStore in anything long-lived: an in-memory cache forgets
-    # spent overrides on restart, so they could be presented again.
-    replay_cache: ReplayStore = field(default_factory=InMemoryReplayCache)
+    # Required whenever override_key is set, and never picked silently: a
+    # default in-memory cache would forget spent overrides on restart, so they
+    # could be presented again. Pass a SqliteReplayStore for anything
+    # long-lived; pass InMemoryReplayCache() only in tests and one-shot demos.
+    replay_cache: ReplayStore | None = None
     chronicle: Chronicle | None = None
     override_max_age: timedelta = timedelta(minutes=5)
     clock_skew: timedelta = timedelta(seconds=30)
@@ -135,6 +137,13 @@ class UncertaintyGate:
             raise ValueError("threshold must be a number strictly between 0 and 1")
         if self.override_key is not None:
             _check_key(self.override_key)
+            if self.replay_cache is None:
+                raise ValueError(
+                    "overrides need an explicit replay store: pass replay_cache=SqliteReplayStore(path) "
+                    "(or InMemoryReplayCache() in tests), so spent overrides stay spent"
+                )
+        if self.replay_cache is not None and not isinstance(self.replay_cache, ReplayStore):
+            raise TypeError("replay_cache must implement check_and_store() and contains()")
 
     def evaluate(
         self,
@@ -181,7 +190,7 @@ class UncertaintyGate:
         )
 
     def _override_problem(self, override: Mapping[str, Any], req_hash: str, now: datetime) -> str | None:
-        if self.override_key is None:
+        if self.override_key is None or self.replay_cache is None:
             return "overrides_not_configured"
         if not isinstance(override, Mapping) or set(override) != set(_OVERRIDE_FIELDS) | {"signature"}:
             return "malformed"

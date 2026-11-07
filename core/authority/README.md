@@ -27,7 +27,7 @@ NO BOUNDARY = NO AUTHORITY
 ## What this module does not do yet
 
 - It does not provide public-key signatures. Gate overrides use a shared HMAC key.
-- The persistent replay store is single-host and keeps every nonce (no retention policy yet). The gate defaults to the in-memory cache; pass a `SqliteReplayStore` for anything long-lived (GAP-002).
+- The persistent replay store is single-host and keeps every nonce (no retention policy yet). A gate that accepts overrides must be given a replay store explicitly (`SqliteReplayStore` for anything long-lived, `InMemoryReplayCache` only in tests and one-shot demos); there is no silent in-memory default (GAP-002).
 - The Chronicle is single-writer and local. It has no multi-process locking and no signed head.
 - It does not grant legal, clinical, defense, safety, AGI, ASI, or production authority.
 - It does not prove real-world legitimacy.

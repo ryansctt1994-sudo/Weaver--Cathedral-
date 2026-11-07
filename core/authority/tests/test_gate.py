@@ -15,6 +15,7 @@ from core.authority.gate import (
     request_hash,
     sign_override,
 )
+from core.authority.replay import InMemoryReplayCache
 
 KEY = b"k" * 32
 NOW = datetime(2026, 11, 7, 12, 0, tzinfo=timezone.utc)
@@ -22,6 +23,7 @@ REQUEST = {"action": "deploy_patch", "target": "demo.authority_spine.001"}
 
 
 def gate(**kwargs) -> UncertaintyGate:
+    kwargs.setdefault("replay_cache", InMemoryReplayCache())
     return UncertaintyGate(threshold=0.7, override_key=KEY, **kwargs)
 
 
@@ -87,6 +89,22 @@ def test_invalid_threshold_is_refused(threshold):
 def test_weak_or_wrong_type_key_is_refused(key):
     with pytest.raises(ValueError):
         UncertaintyGate(threshold=0.7, override_key=key)
+
+
+def test_overrides_need_an_explicit_replay_store():
+    # No silent in-memory default: it would forget spent overrides on restart (GAP-002).
+    with pytest.raises(ValueError, match="explicit replay store"):
+        UncertaintyGate(threshold=0.7, override_key=KEY)
+
+
+def test_a_gate_without_overrides_needs_no_replay_store():
+    record = UncertaintyGate(threshold=0.7).evaluate(REQUEST, 0.1, now=NOW)
+    assert record.decision is GateDecision.ALLOW
+
+
+def test_replay_cache_must_be_a_replay_store():
+    with pytest.raises(TypeError):
+        UncertaintyGate(threshold=0.7, override_key=KEY, replay_cache=set())  # type: ignore[arg-type]
 
 
 def test_there_is_no_disabled_mode():

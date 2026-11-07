@@ -4,8 +4,8 @@
 > **Portfolio crosswalk — 2026-10-06:** This staging repository uses local evidence-language inherited from earlier handoffs. Its `E3` wording must not be treated as automatic equivalence to the current portfolio ladder. Portfolio-wide state remains **E2 ceiling / W0 / O0 / production prohibited / E4 not earned**; synthesis does not inherit evidence from source repos.
 
 **Status:** Integration/staging blueprint v0.1.1 with Phase 1 authority spine merged  
-**Date:** 2026-07-08  
-**Latest evidence update:** PR #1 merged at `1cf86bc1ba7dd7d9c9bdd9270554041b7cc03579` after green CI  
+**Date:** 2026-11-07  
+**Latest evidence update:** PR #9 merged at `83123d3b937869cb233b05b3fef589da3cffd24f` (hash profiles, Chronicle, gate, persistent replay store, evidence bundle, claim audit). Phase 1 was PR #1 at `1cf86bc1ba7dd7d9c9bdd9270554041b7cc03579`.  
 **Authority posture:** Architecture and local prototype only. No production, safety, legal, medical, defense, AGI, ASI, or autonomous authority is claimed by this document.  
 **Evidence posture:** Repository-derived synthesis plus CI-green Phase 1 authority kernel. E3 reproducibility remains blocked until receipt bundles, logs, replay package, artifact hashes, and failure transcripts exist.
 
@@ -213,6 +213,15 @@ Implemented in PR #1:
 - GitHub Actions CI
 - authority spine demo scaffold under `forge/demos/authority_spine_001/`
 
+Added in PR #9:
+
+- named hash profiles, with RFC 8785 JCS the default for new formats; receipt v2 binds its profile (GAP-013, closed)
+- `Chronicle`, a hash-chained JSON Lines log, and `weaver-authority chronicle-verify`
+- `UncertaintyGate`, a fail-closed gate with HMAC-signed, request-bound, expiring, single-use overrides
+- `SqliteReplayStore`, persistent and atomic across processes on one host (GAP-002)
+- an evidence bundle for `authority_spine_001`, rebuilt and compared across Python 3.11–3.13 in CI (GAP-005)
+- `skills/governance/claim_audit`, which enforces the Blocking Rule in CI (GAP-004)
+
 Current commands:
 
 ```bash
@@ -226,10 +235,10 @@ python -m core.authority promote demo.authority_spine.001 E1 --evidence declared
 Remaining boundary:
 
 ```text
-Persistent replay: not implemented
-Signature verification: not implemented
-E3 receipt bundle: not complete
-Independent reproduction: absent
+Persistent replay: single-host SQLite store, no retention policy (GAP-002)
+Signature verification: not implemented (envelopes are unsigned; gate overrides use a shared HMAC key)
+E3 receipt bundle: builds and verifies; promotion report and governance decision missing (GAP-005)
+Independent reproduction: absent (GAP-006)
 Production authority: none
 ```
 
@@ -409,7 +418,7 @@ Deliverables:
 
 **Status:** Completed and merged. E2 candidate.  
 **Evidence:** Green CI on PR #1, pytest suite, package install, CLI/module entrypoint, synthetic fixtures, bounded demo scaffold.  
-**Next:** Persistent replay + full receipt bundle for E3.
+**Next:** Promotion report and governance decision for the evidence bundle (GAP-005), then independent reproduction (GAP-006). Persistent replay landed in PR #9.
 
 Delivered:
 

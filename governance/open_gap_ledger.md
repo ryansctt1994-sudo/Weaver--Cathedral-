@@ -1,7 +1,7 @@
 # Open Gap Ledger
 
 **Document:** Weaver Cathedral Master Build Open Gap Ledger  
-**Status:** v0.1.2 Phase 1 post-merge update  
+**Status:** v0.1.3 post-PR #9 update (GAP-013 closed)  
 **Purpose:** Track what is not yet proven, built, reproduced, or authorized.
 
 ---
@@ -24,6 +24,7 @@
 | ID | Gap | Resolution | SHA |
 |----|-----|------------|-----|
 | GAP-001 | Authority kernel not yet implemented in this repo | Phase 1 authority spine merged with models, schemas, receipts, bounded in-memory replay, verifier, CLI, fixtures, pytest suite, demo scaffold, and green CI. This closes the minimal implementation gap only. Persistent replay, signatures, and E3 receipt bundle remain separate open work. | `1cf86bc1ba7dd7d9c9bdd9270554041b7cc03579` |
+| GAP-013 | Canonical JSON serialization differs across portfolio repos | Cathedral (`ensure_ascii=False`), zorel-kernel (`ensure_ascii=True`) and Delta-717 (default separators) hashed the same data three ways. Each is now a named profile in `core/authority/canonical.py`, and RFC 8785 JCS is the default for new formats. Receipts v2 (`weaver.authority.receipt.v2`) record `hash_profile` and bind it into the hash. v1 receipts still verify byte-for-byte (golden tests), and zorel's sealed receipt verifies under `zorel.ascii.v1`. Merged in PR #9 (commits `479ca31`, `0390d8b`). This closes the naming gap only: the legacy profiles stay supported and no sealed hash was migrated. | `83123d3b937869cb233b05b3fef589da3cffd24f` |
 
 ---
 
@@ -31,7 +32,7 @@
 
 | ID | Gap | Severity | Status | Resolution required |
 |---|---:|---:|---|---|
-| GAP-002 | Replay cache not yet persistent/atomic | G3 | PARTIAL | `SqliteReplayStore` (`core/authority/replay.py`) is persistent and atomic across processes and restarts on one host: in a test, 8 processes race for the same 50 nonces and each nonce is accepted exactly once. The verifier fails closed (`replay_store_unavailable`) when the store errors, and `weaver-authority verify --replay-db` rejects replays across runs. Remaining: retention/pruning policy, multi-host storage, and making the persistent store the default wherever overrides are accepted. |
+| GAP-002 | Replay cache not yet persistent/atomic | G3 | PARTIAL | `SqliteReplayStore` (`core/authority/replay.py`) is persistent and atomic across processes and restarts on one host: in a test, 8 processes race for the same 50 nonces and each nonce is accepted exactly once. The verifier fails closed (`replay_store_unavailable`) when the store errors, and `weaver-authority verify --replay-db` rejects replays across runs. `UncertaintyGate` refuses to accept overrides without an explicitly chosen replay store, so a gate can no longer fall back to an in-memory cache that forgets spent overrides on restart. Remaining: retention/pruning policy and multi-host storage. |
 | GAP-003 | Agent harness not yet connected to governance gates | G4 | OPEN | Build role-policy-bound orchestrator adapter. |
 | GAP-004 | Skill format not yet defined beyond scaffold/spec | G2 | PARTIAL | First concrete skill: `skills/governance/claim_audit/` (manifest, SKILL.md, input/output schemas, example, risk, receipts, contract tests; declared E1). `tests/test_skill_packages.py` rejects any skill package that doesn't meet `SKILL_SPEC.md`. Remaining: the other skills in the spec's first-skills list, and skill receipts recorded in a chronicle. |
 | GAP-005 | Demonstration-as-evidence package is not yet E3 complete | G3 | PARTIAL | `forge/demos/authority_spine_001/scripts/bundle.py` builds the package: receipts, 8 failure-path transcripts, a hash-chained chronicle, pytest log, environment, a manifest of bundle and source hashes, and REPLAY.md. `verify_bundle.py` checks every hash, the chronicle head and every receipt, and rebuilds the bundle to require byte-identical deterministic files. CI builds and verifies it on Python 3.11–3.13, uploads it, and requires the deterministic files to match across versions. Remaining: a promotion report and the governance decision. This is not independent reproduction (GAP-006). |
@@ -42,7 +43,6 @@
 | GAP-010 | CI exists for authority spine but not full master build | G3 | PARTIAL | GitHub Actions CI exists for authority tests. Add broader workflows for lint, schemas, receipts, demos, and future runtime packages. |
 | GAP-011 | Security review absent | G4 | OPEN | Add threat model and dependency/security scan. |
 | GAP-012 | Production deployment posture undefined | G5 | OPEN | Keep production authority at NONE until deployment controls exist. |
-| GAP-013 | Canonical JSON serialization differs across portfolio repos | G3 | RESOLVED (pending merge) | Found: Cathedral (`ensure_ascii=False`), zorel-kernel (`ensure_ascii=True`) and Delta-717 (default separators) hash the same data three ways. Resolved: each is a named profile in `core/authority/canonical.py`, and RFC 8785 JCS is the default for new formats. Receipts v2 (`weaver.authority.receipt.v2`) record `hash_profile` and bind it into the hash. v1 receipts still verify byte-for-byte (golden tests), and zorel's sealed receipt verifies under `zorel.ascii.v1`. Move to Closed Gaps with the merge SHA. |
 
 ---
 
