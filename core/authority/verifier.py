@@ -8,7 +8,7 @@ from pydantic import ValidationError
 
 from .models import AuthorityEnvelope, PromotionDecision, VerificationResult
 from .receipts import generate_receipt, payload_hash
-from .replay import InMemoryReplayCache
+from .replay import InMemoryReplayCache, ReplayStore, ReplayStoreError
 
 
 PROMOTION_REQUIREMENTS: dict[str, set[str]] = {
@@ -25,14 +25,16 @@ def parse_envelope(raw: dict) -> AuthorityEnvelope:
     return AuthorityEnvelope.model_validate(raw)
 
 
-def verify_envelope(raw: dict, replay_cache: InMemoryReplayCache | None = None) -> VerificationResult:
+def verify_envelope(raw: dict, replay_cache: ReplayStore | None = None) -> VerificationResult:
     """Validate an envelope, reject replay, and generate a receipt hash.
 
     This is deliberately bounded. It checks schema, payload hash, and nonce
     replay. It does not yet verify public-key signatures.
     """
 
-    cache = replay_cache or InMemoryReplayCache()
+    # `is None`, not `or`: an empty store can be falsy (len() == 0), and `or`
+    # would silently swap it for a throwaway in-memory cache.
+    cache = replay_cache if replay_cache is not None else InMemoryReplayCache()
 
     try:
         envelope = parse_envelope(raw)
@@ -50,7 +52,20 @@ def verify_envelope(raw: dict, replay_cache: InMemoryReplayCache | None = None) 
             receipt_hash=receipt.receipt_hash,
         )
 
-    if not cache.check_and_store(envelope.nonce):
+    try:
+        is_new = cache.check_and_store(envelope.nonce)
+    except ReplayStoreError:
+        # Fail closed: if we can't tell whether this is a replay, don't accept it.
+        receipt = generate_receipt(envelope, accepted=False, reason="replay_store_unavailable")
+        return VerificationResult(
+            accepted=False,
+            envelope_id=envelope.envelope_id,
+            evidence_level=envelope.evidence_level,
+            reason="replay_store_unavailable",
+            receipt_hash=receipt.receipt_hash,
+        )
+
+    if not is_new:
         receipt = generate_receipt(envelope, accepted=False, reason="replay_detected")
         return VerificationResult(
             accepted=False,

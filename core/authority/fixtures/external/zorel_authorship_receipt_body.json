@@ -1,0 +1,149 @@
+{
+  "attestation": {
+    "creation_context": {
+      "current_location": "ryansctt1994-sudo/zorel-kernel",
+      "original_medium": "Claude.ai Artifacts (native)",
+      "preservation_method": "GitHub repos + mobile screenshots + local archives",
+      "secondary_index": "ARTIFACT_INDEX_COMPREHENSIVE.md"
+    },
+    "disputes_and_claims": {
+      "escalation": "Refer to GitHub commit history, Chronicle ledger, this declaration, and witness record (•ㅅ•).",
+      "remedy": "Use this document, GitHub history, and Chronicle records as provenance evidence.",
+      "statement": "Any claim to authorship of this artifact corpus by persons other than the declarant is formally disputed and recorded. This receipt exists to preserve provenance and authorship intent."
+    },
+    "statement": "I, Ryan (@TheraPantis), declare under the epistemic discipline of Cathedral-OS that I am the sole author and original creator of the artifact corpus described herein, spanning July–October 2025. These artifacts represent work conducted in my capacity as an independent systems architect and AI safety engineer. This declaration is sealed by the Rabbit (•ㅅ•) as witness and is recorded immutably in the chronicle.",
+    "timeline_evidence": [
+      {
+        "artifacts": "Core files + consolidated must-keep index",
+        "phase": "Q3 2025 (Jul–Sep)",
+        "status": "Debugged, test-ready, awaiting receipt",
+        "work": "Cathedral-OS archaeology & recovery"
+      },
+      {
+        "artifacts": "receipt.py, chronicle.py, governance_debt.py, evidence_ladder.py, constitution_loader.py",
+        "phase": "Sep 2025",
+        "status": "Frozen/Canonical",
+        "work": "Phase 1 receipt spine construction"
+      },
+      {
+        "artifacts": "50+ satellite artifacts",
+        "phase": "Aug–Oct 2025",
+        "status": "Active development",
+        "work": "Symchaos ecosystem, monitoring, governance frameworks"
+      },
+      {
+        "artifacts": "60+ exploratory artifacts",
+        "phase": "Jul–Oct 2025",
+        "status": "Staged for integration",
+        "work": "Constitutional, philosophical, research frameworks"
+      }
+    ]
+  },
+  "authorship_manifest": {
+    "artifact_corpus": {
+      "creation_window_end": "2025-10-31T23:59:59Z",
+      "creation_window_start": "2025-07-01T00:00:00Z",
+      "primary_categories": [
+        "Cathedral-OS / Weaver OS (Core Engineering)",
+        "Testing & Verification (Receipt Spine)",
+        "Governance & Policy (Constitutional)",
+        "Research & Frameworks (AI Safety)",
+        "Technical Infrastructure (Backend + Monitoring)",
+        "Simulations & Analysis (Operational)",
+        "Philosophical & Methodological (Epistemic)",
+        "Satellite Projects (NeuroStrata, MVS, ASIN/CP8)"
+      ],
+      "total_artifacts": "120+"
+    },
+    "declarant": {
+      "geographic_base": "Metro-East (Illinois)",
+      "legal_name": "Ryan",
+      "roles": [
+        "Independent Systems Architect",
+        "AI Safety Engineer",
+        "SIS Director, Collinsville Community Unit School District 10"
+      ],
+      "x_handle": "@TheraPantis"
+    },
+    "declaration_type": "AUTHORSHIP_RECEIPT",
+    "evidence_stage": "E3_RECEIPTED",
+    "forge_loom_boundary": {
+      "clarification": "Architectural discipline, not content suppression",
+      "engineering_artifacts": "Core / Tests / Implementation (FULL AUTHORITY)",
+      "firewall_enforcement": "test_no_liturgical_artifacts.py (HARD INVARIANT)",
+      "mythopoeic_material": "Design-Philosophy / Compendium (NO NORMATIVE AUTHORITY)"
+    },
+    "repository_locations": {
+      "backup_status": "CRITICAL PRIORITY",
+      "branch": "main",
+      "primary_engineering": "https://github.com/ryansctt1994-sudo/zorel-kernel"
+    },
+    "timestamp_sealed": "2026-06-07T00:00:00Z",
+    "witness": {
+      "authority": "Witnesses but does not enforce; records without edit",
+      "function": "Verification anchor, narrative-boundary enforcement, log keeper",
+      "motif": "The Rabbit",
+      "seal": "(•ㅅ•)"
+    }
+  },
+  "certificate_hash": null,
+  "foundation_files": {
+    "chronicle.py": {
+      "checksum_placeholder": "[SHA256 to be filled from repo]",
+      "purpose": "WORM hash-chained ledger (write-once, read-many)",
+      "role": "Immutable authority trail",
+      "stage": "Frozen/Verified"
+    },
+    "constitution_loader.py": {
+      "checksum_placeholder": "[SHA256 to be filled from repo]",
+      "purpose": "Authority FSM & constitutional rule loading",
+      "role": "Governance authority binding",
+      "stage": "Frozen/Verified"
+    },
+    "evidence_ladder.py": {
+      "checksum_placeholder": "[SHA256 to be filled from repo]",
+      "purpose": "QGS model definition (E0→E5 progression)",
+      "role": "Evidence framework authority",
+      "stage": "Frozen/Canonical"
+    },
+    "governance_debt.py": {
+      "checksum_placeholder": "[SHA256 to be filled from repo]",
+      "purpose": "Governance exception tracking & debt accumulation",
+      "role": "Invariant enforcement",
+      "stage": "Frozen/Verified"
+    },
+    "negative_invariants.yaml": {
+      "checksum_placeholder": "[SHA256 to be filled from repo]",
+      "purpose": "Hard invariant definitions & exception rules",
+      "role": "Constitutional constraints",
+      "stage": "Frozen/Canonical"
+    },
+    "receipt.py": {
+      "checksum_placeholder": "[SHA256 to be filled from repo]",
+      "purpose": "Receipt generation & evidence recording",
+      "role": "Core Phase 1 spine",
+      "stage": "E3_RECEIPTED"
+    },
+    "test_no_liturgical_artifacts.py": {
+      "checksum_placeholder": "[SHA256 to be filled from repo]",
+      "purpose": "Forge/Loom firewall enforcement",
+      "role": "Epistemic boundary guardian",
+      "stage": "Frozen/Verified"
+    }
+  },
+  "master_invariants": [
+    "CAPABILITY ≠ AUTHORITY",
+    "NO RECEIPT = NO PROMOTION",
+    "EXCEPTIONS ACCUMULATE DEBT",
+    "REALITY RETAINS VETO",
+    "No mechanism may silently convert uncertainty into authority"
+  ],
+  "witness_seal": {
+    "authority": "Attests to authenticity without enforcing",
+    "function": "Observes, records, marks narrative boundaries",
+    "message": "The Rabbit has observed and marked this receipt. It is sealed in the chronicle.",
+    "seal_time": "2026-06-07T00:00:00Z",
+    "witness_motif": "(•ㅅ•)",
+    "witness_name": "The Rabbit"
+  }
+}

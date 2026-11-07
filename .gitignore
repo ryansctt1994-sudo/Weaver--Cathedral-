@@ -1,0 +1,10 @@
+# Python bytecode and build metadata
+__pycache__/
+*.py[cod]
+*.egg-info/
+build/
+dist/
+.pytest_cache/
+
+# Evidence bundles are built by CI and uploaded as artifacts, not committed
+forge/demos/authority_spine_001/bundle/

@@ -55,7 +55,11 @@ class Receipt(BaseModel):
 
     model_config = ConfigDict(extra="forbid")
 
-    receipt_version: str = "weaver.authority.receipt.v1"
+    receipt_version: Literal["weaver.authority.receipt.v1", "weaver.authority.receipt.v2"] = "weaver.authority.receipt.v2"
+    # v2 only: the canonical-JSON profile the hash was computed under
+    # (core/authority/canonical.py). v1 receipts have none and always use
+    # weaver.c14n.v1.
+    hash_profile: str | None = None
     envelope_id: str
     issuer: str
     subject: str

@@ -9,13 +9,16 @@ on:
 jobs:
   authority-spine:
     runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        python-version: ["3.11", "3.12", "3.13"]
     steps:
       - uses: actions/checkout@v4
 
       - name: Set up Python
         uses: actions/setup-python@v5
         with:
-          python-version: "3.11"
+          python-version: ${{ matrix.python-version }}
 
       - name: Install package
         run: |
@@ -24,3 +27,71 @@ jobs:
 
       - name: Run tests
         run: pytest -q
+
+      - name: Run authority spine demo
+        run: |
+          bash forge/demos/authority_spine_001/scripts/run.sh
+          bash forge/demos/authority_spine_001/scripts/verify.sh
+
+      - name: Build and verify evidence bundle
+        run: |
+          python forge/demos/authority_spine_001/scripts/bundle.py forge/demos/authority_spine_001/bundle
+          python forge/demos/authority_spine_001/scripts/verify_bundle.py forge/demos/authority_spine_001/bundle
+
+      - name: Upload evidence bundle
+        uses: actions/upload-artifact@v4
+        with:
+          name: evidence-bundle-py${{ matrix.python-version }}
+          path: forge/demos/authority_spine_001/bundle
+          if-no-files-found: error
+
+  claim-audit:
+    # governance.claim_audit enforces the Blocking Rule in governance/open_gap_ledger.md:
+    # an unbacked blocked term anywhere in the repo fails the build.
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install package
+        run: python -m pip install -e .
+
+      - name: Audit claims
+        run: python skills/governance/claim_audit/claim_audit.py . --json claim-audit-report.json
+
+      - name: Upload claim audit report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: claim-audit-report
+          path: claim-audit-report.json
+
+  bundle-determinism:
+    # Replay across interpreters: every deterministic bundle file must be
+    # byte-identical whichever Python version built it.
+    needs: authority-spine
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          pattern: evidence-bundle-py*
+          path: bundles
+
+      - name: Compare deterministic files across Python versions
+        run: |
+          python - <<'PY'
+          import json, pathlib, sys
+          manifests = {p.parent.name: json.loads(p.read_text()) for p in sorted(pathlib.Path("bundles").glob("*/MANIFEST.json"))}
+          assert len(manifests) >= 2, f"expected one bundle per Python version, got {sorted(manifests)}"
+          names = {n for m in manifests.values() for n in m["deterministic_files"]}
+          bad = [n for n in sorted(names) if len({m["bundle_files"].get(n) for m in manifests.values()}) != 1]
+          heads = {m["chronicle_head"] for m in manifests.values()}
+          print(f"{len(manifests)} bundles, {len(names)} deterministic files, chronicle heads: {heads}")
+          if bad or len(heads) != 1:
+              print("differs across versions:", bad)
+              sys.exit(1)
+          PY
