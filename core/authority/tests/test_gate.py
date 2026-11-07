@@ -227,3 +227,24 @@ def test_uniform_distribution_vetoes_and_confident_one_passes():
     g = gate()
     assert g.evaluate(REQUEST, normalized_entropy([0.25] * 4), now=NOW).decision is GateDecision.VETO
     assert g.evaluate(REQUEST, normalized_entropy([0.97, 0.01, 0.01, 0.01]), now=NOW).decision is GateDecision.ALLOW
+
+
+def test_context_is_chronicled_when_given():
+    chron = Chronicle()
+    gate(chronicle=chron).evaluate(
+        REQUEST, 0.1, now=NOW, context={"tool": "Bash", "rule": "bash_read_only_program", "policy_version": "v1"}
+    )
+    assert chron.entries[-1]["data"]["context"] == {"tool": "Bash", "rule": "bash_read_only_program", "policy_version": "v1"}
+
+
+def test_context_is_omitted_when_not_given():
+    chron = Chronicle()
+    gate(chronicle=chron).evaluate(REQUEST, 0.1, now=NOW)
+    assert set(chron.entries[-1]["data"]) == {
+        "decision", "reason", "request_hash", "uncertainty", "threshold", "override_operator",
+    }
+
+
+def test_uncanonicalizable_context_vetoes_instead_of_raising():
+    record = gate(chronicle=Chronicle()).evaluate(REQUEST, 0.1, now=NOW, context={"x": float("nan")})
+    assert record.decision is GateDecision.VETO and record.reason.startswith("chronicle_write_failed")

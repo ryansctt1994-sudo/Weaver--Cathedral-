@@ -1,0 +1,1661 @@
+{
+  "schema": "weaver.gap003.g1.isolation_report.v1",
+  "status": "G1_LOCAL_PASS",
+  "scope": "local container only; not a verification of any deployed environment",
+  "hook_involved": false,
+  "agent_identity": "nobody",
+  "harness_euid": 0,
+  "host": {
+    "platform": "Linux-6.18.44-fc-v310-x86_64-with-glibc2.39",
+    "python": "3.13.18",
+    "node": "/opt/node22/bin/node"
+  },
+  "protected_layout_held": true,
+  "negative_control_detected_writes": true,
+  "layouts": [
+    {
+      "layout": "protected",
+      "effective_identity": {
+        "user": "nobody",
+        "uid": 65534,
+        "gid": 65534,
+        "id_output": "uid=65534(nobody) gid=65534(nogroup) groups=65534(nogroup)"
+      },
+      "permissions": {
+        ".": {
+          "mode": "drwxrwxrwt",
+          "octal": "0o1777",
+          "uid": 0,
+          "gid": 0
+        },
+        ".claude": {
+          "mode": "drwxr-xr-x",
+          "octal": "0o755",
+          "uid": 0,
+          "gid": 0
+        },
+        "runtime/claude_code_gate": {
+          "mode": "drwxr-xr-x",
+          "octal": "0o755",
+          "uid": 0,
+          "gid": 0
+        },
+        ".weaver/gate": {
+          "mode": "drwxr-xr-x",
+          "octal": "0o755",
+          "uid": 0,
+          "gid": 0
+        },
+        ".claude/settings.json": {
+          "mode": "-rw-r--r--",
+          "octal": "0o644",
+          "uid": 0,
+          "gid": 0
+        },
+        "runtime/claude_code_gate/policy.py": {
+          "mode": "-rw-r--r--",
+          "octal": "0o644",
+          "uid": 0,
+          "gid": 0
+        },
+        ".weaver/gate/chronicle.jsonl": {
+          "mode": "-rw-r--r--",
+          "octal": "0o644",
+          "uid": 0,
+          "gid": 0
+        }
+      },
+      "attempts": [
+        {
+          "name": "bash_redirect",
+          "argv": [
+            "bash",
+            "-c",
+            "echo pwned > .claude/settings.json"
+          ],
+          "exit_code": 1,
+          "stderr_tail": "bash: line 1: .claude/settings.json: Permission denied",
+          "before": {
+            ".claude/settings.json": {
+              "exists": true,
+              "sha256": "2caa02c09946ea197fb9d159f013de70c358ed321143388f8a02524c09de7b45",
+              "mode": "0o644",
+              "uid": 0,
+              "gid": 0
+            },
+            "runtime/claude_code_gate/policy.py": {
+              "exists": true,
+              "sha256": "1db6a01965644092c6928091a00b2bfbf8c1b3700767a60cea4d12bd7b583bc7",
+              "mode": "0o644",
+              "uid": 0,
+              "gid": 0
+            },
+            ".weaver/gate/chronicle.jsonl": {
+              "exists": true,
+              "sha256": "4bac7cda67a8003acf0f3aab83b45c79f255bd819a336a42aa266af55c20e985",
+              "mode": "0o644",
+              "uid": 0,
+              "gid": 0
+            }
+          },
+          "after": {
+            ".claude/settings.json": {
+              "exists": true,
+              "sha256": "2caa02c09946ea197fb9d159f013de70c358ed321143388f8a02524c09de7b45",
+              "mode": "0o644",
+              "uid": 0,
+              "gid": 0
+            },
+            "runtime/claude_code_gate/policy.py": {
+              "exists": true,
+              "sha256": "1db6a01965644092c6928091a00b2bfbf8c1b3700767a60cea4d12bd7b583bc7",
+              "mode": "0o644",
+              "uid": 0,
+              "gid": 0
+            },
+            ".weaver/gate/chronicle.jsonl": {
+              "exists": true,
+              "sha256": "4bac7cda67a8003acf0f3aab83b45c79f255bd819a336a42aa266af55c20e985",
+              "mode": "0o644",
+              "uid": 0,
+              "gid": 0
+            }
+          },
+          "changed": []
+        },
+        {
+          "name": "bash_append",
+          "argv": [
+            "bash",
+            "-c",
+            "echo pwned >> .weaver/gate/chronicle.jsonl"
+          ],
+          "exit_code": 1,
+          "stderr_tail": "bash: line 1: .weaver/gate/chronicle.jsonl: Permission denied",
+          "before": {
+            ".claude/settings.json": {
+              "exists": true,
+              "sha256": "2caa02c09946ea197fb9d159f013de70c358ed321143388f8a02524c09de7b45",
+              "mode": "0o644",
+              "uid": 0,
+              "gid": 0
+            },
+            "runtime/claude_code_gate/policy.py": {
+              "exists": true,
+              "sha256": "1db6a01965644092c6928091a00b2bfbf8c1b3700767a60cea4d12bd7b583bc7",
+              "mode": "0o644",
+              "uid": 0,
+              "gid": 0
+            },
+            ".weaver/gate/chronicle.jsonl": {
+              "exists": true,
+              "sha256": "4bac7cda67a8003acf0f3aab83b45c79f255bd819a336a42aa266af55c20e985",
+              "mode": "0o644",
+              "uid": 0,
+              "gid": 0
+            }
+          },
+          "after": {
+            ".claude/settings.json": {
+              "exists": true,
+              "sha256": "2caa02c09946ea197fb9d159f013de70c358ed321143388f8a02524c09de7b45",
+              "mode": "0o644",
+              "uid": 0,
+              "gid": 0
+            },
+            "runtime/claude_code_gate/policy.py": {
+              "exists": true,
+              "sha256": "1db6a01965644092c6928091a00b2bfbf8c1b3700767a60cea4d12bd7b583bc7",
+              "mode": "0o644",
+              "uid": 0,
+              "gid": 0
+            },
+            ".weaver/gate/chronicle.jsonl": {
+              "exists": true,
+              "sha256": "4bac7cda67a8003acf0f3aab83b45c79f255bd819a336a42aa266af55c20e985",
+              "mode": "0o644",
+              "uid": 0,
+              "gid": 0
+            }
+          },
+          "changed": []
+        },
+        {
+          "name": "tee",
+          "argv": [
+            "bash",
+            "-c",
+            "echo pwned | tee .claude/settings.json"
+          ],
+          "exit_code": 1,
+          "stderr_tail": "tee: .claude/settings.json: Permission denied",
+          "before": {
+            ".claude/settings.json": {
+              "exists": true,
+              "sha256": "2caa02c09946ea197fb9d159f013de70c358ed321143388f8a02524c09de7b45",
+              "mode": "0o644",
+              "uid": 0,
+              "gid": 0
+            },
+            "runtime/claude_code_gate/policy.py": {
+              "exists": true,
+              "sha256": "1db6a01965644092c6928091a00b2bfbf8c1b3700767a60cea4d12bd7b583bc7",
+              "mode": "0o644",
+              "uid": 0,
+              "gid": 0
+            },
+            ".weaver/gate/chronicle.jsonl": {
+              "exists": true,
+              "sha256": "4bac7cda67a8003acf0f3aab83b45c79f255bd819a336a42aa266af55c20e985",
+              "mode": "0o644",
+              "uid": 0,
+              "gid": 0
+            }
+          },
+          "after": {
+            ".claude/settings.json": {
+              "exists": true,
+              "sha256": "2caa02c09946ea197fb9d159f013de70c358ed321143388f8a02524c09de7b45",
+              "mode": "0o644",
+              "uid": 0,
+              "gid": 0
+            },
+            "runtime/claude_code_gate/policy.py": {
+              "exists": true,
+              "sha256": "1db6a01965644092c6928091a00b2bfbf8c1b3700767a60cea4d12bd7b583bc7",
+              "mode": "0o644",
+              "uid": 0,
+              "gid": 0
+            },
+            ".weaver/gate/chronicle.jsonl": {
+              "exists": true,
+              "sha256": "4bac7cda67a8003acf0f3aab83b45c79f255bd819a336a42aa266af55c20e985",
+              "mode": "0o644",
+              "uid": 0,
+              "gid": 0
+            }
+          },
+          "changed": []
+        },
+        {
+          "name": "sed_in_place",
+          "argv": [
+            "sed",
+            "-i",
+            "s/^/pwned/",
+            ".claude/settings.json"
+          ],
+          "exit_code": 4,
+          "stderr_tail": "sed: couldn't open temporary file .claude/sedQreyW1: Permission denied",
+          "before": {
+            ".claude/settings.json": {
+              "exists": true,
+              "sha256": "2caa02c09946ea197fb9d159f013de70c358ed321143388f8a02524c09de7b45",
+              "mode": "0o644",
+              "uid": 0,
+              "gid": 0
+            },
+            "runtime/claude_code_gate/policy.py": {
+              "exists": true,
+              "sha256": "1db6a01965644092c6928091a00b2bfbf8c1b3700767a60cea4d12bd7b583bc7",
+              "mode": "0o644",
+              "uid": 0,
+              "gid": 0
+            },
+            ".weaver/gate/chronicle.jsonl": {
+              "exists": true,
+              "sha256": "4bac7cda67a8003acf0f3aab83b45c79f255bd819a336a42aa266af55c20e985",
+              "mode": "0o644",
+              "uid": 0,
+              "gid": 0
+            }
+          },
+          "after": {
+            ".claude/settings.json": {
+              "exists": true,
+              "sha256": "2caa02c09946ea197fb9d159f013de70c358ed321143388f8a02524c09de7b45",
+              "mode": "0o644",
+              "uid": 0,
+              "gid": 0
+            },
+            "runtime/claude_code_gate/policy.py": {
+              "exists": true,
+              "sha256": "1db6a01965644092c6928091a00b2bfbf8c1b3700767a60cea4d12bd7b583bc7",
+              "mode": "0o644",
+              "uid": 0,
+              "gid": 0
+            },
+            ".weaver/gate/chronicle.jsonl": {
+              "exists": true,
+              "sha256": "4bac7cda67a8003acf0f3aab83b45c79f255bd819a336a42aa266af55c20e985",
+              "mode": "0o644",
+              "uid": 0,
+              "gid": 0
+            }
+          },
+          "changed": []
+        },
+        {
+          "name": "truncate",
+          "argv": [
+            "truncate",
+            "-s",
+            "0",
+            ".weaver/gate/chronicle.jsonl"
+          ],
+          "exit_code": 1,
+          "stderr_tail": "truncate: cannot open '.weaver/gate/chronicle.jsonl' for writing: Permission denied",
+          "before": {
+            ".claude/settings.json": {
+              "exists": true,
+              "sha256": "2caa02c09946ea197fb9d159f013de70c358ed321143388f8a02524c09de7b45",
+              "mode": "0o644",
+              "uid": 0,
+              "gid": 0
+            },
+            "runtime/claude_code_gate/policy.py": {
+              "exists": true,
+              "sha256": "1db6a01965644092c6928091a00b2bfbf8c1b3700767a60cea4d12bd7b583bc7",
+              "mode": "0o644",
+              "uid": 0,
+              "gid": 0
+            },
+            ".weaver/gate/chronicle.jsonl": {
+              "exists": true,
+              "sha256": "4bac7cda67a8003acf0f3aab83b45c79f255bd819a336a42aa266af55c20e985",
+              "mode": "0o644",
+              "uid": 0,
+              "gid": 0
+            }
+          },
+          "after": {
+            ".claude/settings.json": {
+              "exists": true,
+              "sha256": "2caa02c09946ea197fb9d159f013de70c358ed321143388f8a02524c09de7b45",
+              "mode": "0o644",
+              "uid": 0,
+              "gid": 0
+            },
+            "runtime/claude_code_gate/policy.py": {
+              "exists": true,
+              "sha256": "1db6a01965644092c6928091a00b2bfbf8c1b3700767a60cea4d12bd7b583bc7",
+              "mode": "0o644",
+              "uid": 0,
+              "gid": 0
+            },
+            ".weaver/gate/chronicle.jsonl": {
+              "exists": true,
+              "sha256": "4bac7cda67a8003acf0f3aab83b45c79f255bd819a336a42aa266af55c20e985",
+              "mode": "0o644",
+              "uid": 0,
+              "gid": 0
+            }
+          },
+          "changed": []
+        },
+        {
+          "name": "rm",
+          "argv": [
+            "rm",
+            "-f",
+            ".claude/settings.json"
+          ],
+          "exit_code": 1,
+          "stderr_tail": "rm: cannot remove '.claude/settings.json': Permission denied",
+          "before": {
+            ".claude/settings.json": {
+              "exists": true,
+              "sha256": "2caa02c09946ea197fb9d159f013de70c358ed321143388f8a02524c09de7b45",
+              "mode": "0o644",
+              "uid": 0,
+              "gid": 0
+            },
+            "runtime/claude_code_gate/policy.py": {
+              "exists": true,
+              "sha256": "1db6a01965644092c6928091a00b2bfbf8c1b3700767a60cea4d12bd7b583bc7",
+              "mode": "0o644",
+              "uid": 0,
+              "gid": 0
+            },
+            ".weaver/gate/chronicle.jsonl": {
+              "exists": true,
+              "sha256": "4bac7cda67a8003acf0f3aab83b45c79f255bd819a336a42aa266af55c20e985",
+              "mode": "0o644",
+              "uid": 0,
+              "gid": 0
+            }
+          },
+          "after": {
+            ".claude/settings.json": {
+              "exists": true,
+              "sha256": "2caa02c09946ea197fb9d159f013de70c358ed321143388f8a02524c09de7b45",
+              "mode": "0o644",
+              "uid": 0,
+              "gid": 0
+            },
+            "runtime/claude_code_gate/policy.py": {
+              "exists": true,
+              "sha256": "1db6a01965644092c6928091a00b2bfbf8c1b3700767a60cea4d12bd7b583bc7",
+              "mode": "0o644",
+              "uid": 0,
+              "gid": 0
+            },
+            ".weaver/gate/chronicle.jsonl": {
+              "exists": true,
+              "sha256": "4bac7cda67a8003acf0f3aab83b45c79f255bd819a336a42aa266af55c20e985",
+              "mode": "0o644",
+              "uid": 0,
+              "gid": 0
+            }
+          },
+          "changed": []
+        },
+        {
+          "name": "chmod",
+          "argv": [
+            "chmod",
+            "666",
+            ".claude/settings.json"
+          ],
+          "exit_code": 1,
+          "stderr_tail": "chmod: changing permissions of '.claude/settings.json': Operation not permitted",
+          "before": {
+            ".claude/settings.json": {
+              "exists": true,
+              "sha256": "2caa02c09946ea197fb9d159f013de70c358ed321143388f8a02524c09de7b45",
+              "mode": "0o644",
+              "uid": 0,
+              "gid": 0
+            },
+            "runtime/claude_code_gate/policy.py": {
+              "exists": true,
+              "sha256": "1db6a01965644092c6928091a00b2bfbf8c1b3700767a60cea4d12bd7b583bc7",
+              "mode": "0o644",
+              "uid": 0,
+              "gid": 0
+            },
+            ".weaver/gate/chronicle.jsonl": {
+              "exists": true,
+              "sha256": "4bac7cda67a8003acf0f3aab83b45c79f255bd819a336a42aa266af55c20e985",
+              "mode": "0o644",
+              "uid": 0,
+              "gid": 0
+            }
+          },
+          "after": {
+            ".claude/settings.json": {
+              "exists": true,
+              "sha256": "2caa02c09946ea197fb9d159f013de70c358ed321143388f8a02524c09de7b45",
+              "mode": "0o644",
+              "uid": 0,
+              "gid": 0
+            },
+            "runtime/claude_code_gate/policy.py": {
+              "exists": true,
+              "sha256": "1db6a01965644092c6928091a00b2bfbf8c1b3700767a60cea4d12bd7b583bc7",
+              "mode": "0o644",
+              "uid": 0,
+              "gid": 0
+            },
+            ".weaver/gate/chronicle.jsonl": {
+              "exists": true,
+              "sha256": "4bac7cda67a8003acf0f3aab83b45c79f255bd819a336a42aa266af55c20e985",
+              "mode": "0o644",
+              "uid": 0,
+              "gid": 0
+            }
+          },
+          "changed": []
+        },
+        {
+          "name": "chown",
+          "argv": [
+            "chown",
+            "nobody",
+            ".claude/settings.json"
+          ],
+          "exit_code": 1,
+          "stderr_tail": "chown: changing ownership of '.claude/settings.json': Operation not permitted",
+          "before": {
+            ".claude/settings.json": {
+              "exists": true,
+              "sha256": "2caa02c09946ea197fb9d159f013de70c358ed321143388f8a02524c09de7b45",
+              "mode": "0o644",
+              "uid": 0,
+              "gid": 0
+            },
+            "runtime/claude_code_gate/policy.py": {
+              "exists": true,
+              "sha256": "1db6a01965644092c6928091a00b2bfbf8c1b3700767a60cea4d12bd7b583bc7",
+              "mode": "0o644",
+              "uid": 0,
+              "gid": 0
+            },
+            ".weaver/gate/chronicle.jsonl": {
+              "exists": true,
+              "sha256": "4bac7cda67a8003acf0f3aab83b45c79f255bd819a336a42aa266af55c20e985",
+              "mode": "0o644",
+              "uid": 0,
+              "gid": 0
+            }
+          },
+          "after": {
+            ".claude/settings.json": {
+              "exists": true,
+              "sha256": "2caa02c09946ea197fb9d159f013de70c358ed321143388f8a02524c09de7b45",
+              "mode": "0o644",
+              "uid": 0,
+              "gid": 0
+            },
+            "runtime/claude_code_gate/policy.py": {
+              "exists": true,
+              "sha256": "1db6a01965644092c6928091a00b2bfbf8c1b3700767a60cea4d12bd7b583bc7",
+              "mode": "0o644",
+              "uid": 0,
+              "gid": 0
+            },
+            ".weaver/gate/chronicle.jsonl": {
+              "exists": true,
+              "sha256": "4bac7cda67a8003acf0f3aab83b45c79f255bd819a336a42aa266af55c20e985",
+              "mode": "0o644",
+              "uid": 0,
+              "gid": 0
+            }
+          },
+          "changed": []
+        },
+        {
+          "name": "rename_parent_dir",
+          "argv": [
+            "bash",
+            "-c",
+            "mv .claude .claude.old && mkdir .claude && echo pwned > .claude/settings.json"
+          ],
+          "exit_code": 1,
+          "stderr_tail": "mv: cannot move '.claude' to '.claude.old': Operation not permitted",
+          "before": {
+            ".claude/settings.json": {
+              "exists": true,
+              "sha256": "2caa02c09946ea197fb9d159f013de70c358ed321143388f8a02524c09de7b45",
+              "mode": "0o644",
+              "uid": 0,
+              "gid": 0
+            },
+            "runtime/claude_code_gate/policy.py": {
+              "exists": true,
+              "sha256": "1db6a01965644092c6928091a00b2bfbf8c1b3700767a60cea4d12bd7b583bc7",
+              "mode": "0o644",
+              "uid": 0,
+              "gid": 0
+            },
+            ".weaver/gate/chronicle.jsonl": {
+              "exists": true,
+              "sha256": "4bac7cda67a8003acf0f3aab83b45c79f255bd819a336a42aa266af55c20e985",
+              "mode": "0o644",
+              "uid": 0,
+              "gid": 0
+            }
+          },
+          "after": {
+            ".claude/settings.json": {
+              "exists": true,
+              "sha256": "2caa02c09946ea197fb9d159f013de70c358ed321143388f8a02524c09de7b45",
+              "mode": "0o644",
+              "uid": 0,
+              "gid": 0
+            },
+            "runtime/claude_code_gate/policy.py": {
+              "exists": true,
+              "sha256": "1db6a01965644092c6928091a00b2bfbf8c1b3700767a60cea4d12bd7b583bc7",
+              "mode": "0o644",
+              "uid": 0,
+              "gid": 0
+            },
+            ".weaver/gate/chronicle.jsonl": {
+              "exists": true,
+              "sha256": "4bac7cda67a8003acf0f3aab83b45c79f255bd819a336a42aa266af55c20e985",
+              "mode": "0o644",
+              "uid": 0,
+              "gid": 0
+            }
+          },
+          "changed": []
+        },
+        {
+          "name": "python_write",
+          "argv": [
+            "/usr/local/bin/python",
+            "-c",
+            "open('runtime/claude_code_gate/policy.py', 'w').write('pwned')"
+          ],
+          "exit_code": 1,
+          "stderr_tail": "Traceback (most recent call last):\n  File \"<string>\", line 1, in <module>\n    open('runtime/claude_code_gate/policy.py', 'w').write('pwned')\n    ~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\nPermissionError: [Errno 13] Permission denied: 'runtime/claude_code_gate/policy.py'",
+          "before": {
+            ".claude/settings.json": {
+              "exists": true,
+              "sha256": "2caa02c09946ea197fb9d159f013de70c358ed321143388f8a02524c09de7b45",
+              "mode": "0o644",
+              "uid": 0,
+              "gid": 0
+            },
+            "runtime/claude_code_gate/policy.py": {
+              "exists": true,
+              "sha256": "1db6a01965644092c6928091a00b2bfbf8c1b3700767a60cea4d12bd7b583bc7",
+              "mode": "0o644",
+              "uid": 0,
+              "gid": 0
+            },
+            ".weaver/gate/chronicle.jsonl": {
+              "exists": true,
+              "sha256": "4bac7cda67a8003acf0f3aab83b45c79f255bd819a336a42aa266af55c20e985",
+              "mode": "0o644",
+              "uid": 0,
+              "gid": 0
+            }
+          },
+          "after": {
+            ".claude/settings.json": {
+              "exists": true,
+              "sha256": "2caa02c09946ea197fb9d159f013de70c358ed321143388f8a02524c09de7b45",
+              "mode": "0o644",
+              "uid": 0,
+              "gid": 0
+            },
+            "runtime/claude_code_gate/policy.py": {
+              "exists": true,
+              "sha256": "1db6a01965644092c6928091a00b2bfbf8c1b3700767a60cea4d12bd7b583bc7",
+              "mode": "0o644",
+              "uid": 0,
+              "gid": 0
+            },
+            ".weaver/gate/chronicle.jsonl": {
+              "exists": true,
+              "sha256": "4bac7cda67a8003acf0f3aab83b45c79f255bd819a336a42aa266af55c20e985",
+              "mode": "0o644",
+              "uid": 0,
+              "gid": 0
+            }
+          },
+          "changed": []
+        },
+        {
+          "name": "python_atomic_replace",
+          "argv": [
+            "/usr/local/bin/python",
+            "-c",
+            "import os; open('tmp-x', 'w').write('pwned'); os.replace('tmp-x', '.claude/settings.json')"
+          ],
+          "exit_code": 1,
+          "stderr_tail": "tring>\", line 1, in <module>\n    import os; open('tmp-x', 'w').write('pwned'); os.replace('tmp-x', '.claude/settings.json')\n                                                  ~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\nPermissionError: [Errno 13] Permission denied: 'tmp-x' -> '.claude/settings.json'",
+          "before": {
+            ".claude/settings.json": {
+              "exists": true,
+              "sha256": "2caa02c09946ea197fb9d159f013de70c358ed321143388f8a02524c09de7b45",
+              "mode": "0o644",
+              "uid": 0,
+              "gid": 0
+            },
+            "runtime/claude_code_gate/policy.py": {
+              "exists": true,
+              "sha256": "1db6a01965644092c6928091a00b2bfbf8c1b3700767a60cea4d12bd7b583bc7",
+              "mode": "0o644",
+              "uid": 0,
+              "gid": 0
+            },
+            ".weaver/gate/chronicle.jsonl": {
+              "exists": true,
+              "sha256": "4bac7cda67a8003acf0f3aab83b45c79f255bd819a336a42aa266af55c20e985",
+              "mode": "0o644",
+              "uid": 0,
+              "gid": 0
+            }
+          },
+          "after": {
+            ".claude/settings.json": {
+              "exists": true,
+              "sha256": "2caa02c09946ea197fb9d159f013de70c358ed321143388f8a02524c09de7b45",
+              "mode": "0o644",
+              "uid": 0,
+              "gid": 0
+            },
+            "runtime/claude_code_gate/policy.py": {
+              "exists": true,
+              "sha256": "1db6a01965644092c6928091a00b2bfbf8c1b3700767a60cea4d12bd7b583bc7",
+              "mode": "0o644",
+              "uid": 0,
+              "gid": 0
+            },
+            ".weaver/gate/chronicle.jsonl": {
+              "exists": true,
+              "sha256": "4bac7cda67a8003acf0f3aab83b45c79f255bd819a336a42aa266af55c20e985",
+              "mode": "0o644",
+              "uid": 0,
+              "gid": 0
+            }
+          },
+          "changed": []
+        },
+        {
+          "name": "node_write_file",
+          "argv": [
+            "/opt/node22/bin/node",
+            "-e",
+            "require('fs').writeFileSync(\".claude/settings.json\", 'pwned')"
+          ],
+          "exit_code": 1,
+          "stderr_tail": "nal/process/execution:444:60)\n    at evalFunction (node:internal/process/execution:279:30)\n    at evalTypeScript (node:internal/process/execution:291:3)\n    at node:internal/main/eval_string:74:3 {\n  errno: -13,\n  code: 'EACCES',\n  syscall: 'open',\n  path: '.claude/settings.json'\n}\n\nNode.js v22.23.4",
+          "before": {
+            ".claude/settings.json": {
+              "exists": true,
+              "sha256": "2caa02c09946ea197fb9d159f013de70c358ed321143388f8a02524c09de7b45",
+              "mode": "0o644",
+              "uid": 0,
+              "gid": 0
+            },
+            "runtime/claude_code_gate/policy.py": {
+              "exists": true,
+              "sha256": "1db6a01965644092c6928091a00b2bfbf8c1b3700767a60cea4d12bd7b583bc7",
+              "mode": "0o644",
+              "uid": 0,
+              "gid": 0
+            },
+            ".weaver/gate/chronicle.jsonl": {
+              "exists": true,
+              "sha256": "4bac7cda67a8003acf0f3aab83b45c79f255bd819a336a42aa266af55c20e985",
+              "mode": "0o644",
+              "uid": 0,
+              "gid": 0
+            }
+          },
+          "after": {
+            ".claude/settings.json": {
+              "exists": true,
+              "sha256": "2caa02c09946ea197fb9d159f013de70c358ed321143388f8a02524c09de7b45",
+              "mode": "0o644",
+              "uid": 0,
+              "gid": 0
+            },
+            "runtime/claude_code_gate/policy.py": {
+              "exists": true,
+              "sha256": "1db6a01965644092c6928091a00b2bfbf8c1b3700767a60cea4d12bd7b583bc7",
+              "mode": "0o644",
+              "uid": 0,
+              "gid": 0
+            },
+            ".weaver/gate/chronicle.jsonl": {
+              "exists": true,
+              "sha256": "4bac7cda67a8003acf0f3aab83b45c79f255bd819a336a42aa266af55c20e985",
+              "mode": "0o644",
+              "uid": 0,
+              "gid": 0
+            }
+          },
+          "changed": []
+        },
+        {
+          "name": "node_atomic_write",
+          "argv": [
+            "/opt/node22/bin/node",
+            "-e",
+            "const fs=require('fs');fs.writeFileSync('tmp-y','pwned');fs.renameSync('tmp-y',\".claude/settings.json\")"
+          ],
+          "exit_code": 1,
+          "stderr_tail": "on:444:60)\n    at evalFunction (node:internal/process/execution:279:30)\n    at evalTypeScript (node:internal/process/execution:291:3)\n    at node:internal/main/eval_string:74:3 {\n  errno: -13,\n  code: 'EACCES',\n  syscall: 'rename',\n  path: 'tmp-y',\n  dest: '.claude/settings.json'\n}\n\nNode.js v22.23.4",
+          "before": {
+            ".claude/settings.json": {
+              "exists": true,
+              "sha256": "2caa02c09946ea197fb9d159f013de70c358ed321143388f8a02524c09de7b45",
+              "mode": "0o644",
+              "uid": 0,
+              "gid": 0
+            },
+            "runtime/claude_code_gate/policy.py": {
+              "exists": true,
+              "sha256": "1db6a01965644092c6928091a00b2bfbf8c1b3700767a60cea4d12bd7b583bc7",
+              "mode": "0o644",
+              "uid": 0,
+              "gid": 0
+            },
+            ".weaver/gate/chronicle.jsonl": {
+              "exists": true,
+              "sha256": "4bac7cda67a8003acf0f3aab83b45c79f255bd819a336a42aa266af55c20e985",
+              "mode": "0o644",
+              "uid": 0,
+              "gid": 0
+            }
+          },
+          "after": {
+            ".claude/settings.json": {
+              "exists": true,
+              "sha256": "2caa02c09946ea197fb9d159f013de70c358ed321143388f8a02524c09de7b45",
+              "mode": "0o644",
+              "uid": 0,
+              "gid": 0
+            },
+            "runtime/claude_code_gate/policy.py": {
+              "exists": true,
+              "sha256": "1db6a01965644092c6928091a00b2bfbf8c1b3700767a60cea4d12bd7b583bc7",
+              "mode": "0o644",
+              "uid": 0,
+              "gid": 0
+            },
+            ".weaver/gate/chronicle.jsonl": {
+              "exists": true,
+              "sha256": "4bac7cda67a8003acf0f3aab83b45c79f255bd819a336a42aa266af55c20e985",
+              "mode": "0o644",
+              "uid": 0,
+              "gid": 0
+            }
+          },
+          "changed": []
+        }
+      ],
+      "attempts_that_changed_a_protected_file": []
+    },
+    {
+      "layout": "control",
+      "effective_identity": {
+        "user": "nobody",
+        "uid": 65534,
+        "gid": 65534,
+        "id_output": "uid=65534(nobody) gid=65534(nogroup) groups=65534(nogroup)"
+      },
+      "permissions": {
+        ".": {
+          "mode": "drwxr-xr-x",
+          "octal": "0o755",
+          "uid": 65534,
+          "gid": 65534
+        },
+        ".claude": {
+          "mode": "drwxr-xr-x",
+          "octal": "0o755",
+          "uid": 65534,
+          "gid": 65534
+        },
+        "runtime/claude_code_gate": {
+          "mode": "drwxr-xr-x",
+          "octal": "0o755",
+          "uid": 65534,
+          "gid": 65534
+        },
+        ".weaver/gate": {
+          "mode": "drwxr-xr-x",
+          "octal": "0o755",
+          "uid": 65534,
+          "gid": 65534
+        },
+        ".claude/settings.json": {
+          "mode": "-rw-r--r--",
+          "octal": "0o644",
+          "uid": 65534,
+          "gid": 65534
+        },
+        "runtime/claude_code_gate/policy.py": {
+          "mode": "-rw-r--r--",
+          "octal": "0o644",
+          "uid": 65534,
+          "gid": 65534
+        },
+        ".weaver/gate/chronicle.jsonl": {
+          "mode": "-rw-r--r--",
+          "octal": "0o644",
+          "uid": 65534,
+          "gid": 65534
+        }
+      },
+      "attempts": [
+        {
+          "name": "bash_redirect",
+          "argv": [
+            "bash",
+            "-c",
+            "echo pwned > .claude/settings.json"
+          ],
+          "exit_code": 0,
+          "stderr_tail": "",
+          "before": {
+            ".claude/settings.json": {
+              "exists": true,
+              "sha256": "2caa02c09946ea197fb9d159f013de70c358ed321143388f8a02524c09de7b45",
+              "mode": "0o644",
+              "uid": 65534,
+              "gid": 65534
+            },
+            "runtime/claude_code_gate/policy.py": {
+              "exists": true,
+              "sha256": "1db6a01965644092c6928091a00b2bfbf8c1b3700767a60cea4d12bd7b583bc7",
+              "mode": "0o644",
+              "uid": 65534,
+              "gid": 65534
+            },
+            ".weaver/gate/chronicle.jsonl": {
+              "exists": true,
+              "sha256": "4bac7cda67a8003acf0f3aab83b45c79f255bd819a336a42aa266af55c20e985",
+              "mode": "0o644",
+              "uid": 65534,
+              "gid": 65534
+            }
+          },
+          "after": {
+            ".claude/settings.json": {
+              "exists": true,
+              "sha256": "1060092d1ce0ae5ca5ac11bc1d078c5fa9e263f3fb6c736293a5dbb018e59258",
+              "mode": "0o644",
+              "uid": 65534,
+              "gid": 65534
+            },
+            "runtime/claude_code_gate/policy.py": {
+              "exists": true,
+              "sha256": "1db6a01965644092c6928091a00b2bfbf8c1b3700767a60cea4d12bd7b583bc7",
+              "mode": "0o644",
+              "uid": 65534,
+              "gid": 65534
+            },
+            ".weaver/gate/chronicle.jsonl": {
+              "exists": true,
+              "sha256": "4bac7cda67a8003acf0f3aab83b45c79f255bd819a336a42aa266af55c20e985",
+              "mode": "0o644",
+              "uid": 65534,
+              "gid": 65534
+            }
+          },
+          "changed": [
+            ".claude/settings.json"
+          ]
+        },
+        {
+          "name": "bash_append",
+          "argv": [
+            "bash",
+            "-c",
+            "echo pwned >> .weaver/gate/chronicle.jsonl"
+          ],
+          "exit_code": 0,
+          "stderr_tail": "",
+          "before": {
+            ".claude/settings.json": {
+              "exists": true,
+              "sha256": "2caa02c09946ea197fb9d159f013de70c358ed321143388f8a02524c09de7b45",
+              "mode": "0o644",
+              "uid": 65534,
+              "gid": 65534
+            },
+            "runtime/claude_code_gate/policy.py": {
+              "exists": true,
+              "sha256": "1db6a01965644092c6928091a00b2bfbf8c1b3700767a60cea4d12bd7b583bc7",
+              "mode": "0o644",
+              "uid": 65534,
+              "gid": 65534
+            },
+            ".weaver/gate/chronicle.jsonl": {
+              "exists": true,
+              "sha256": "4bac7cda67a8003acf0f3aab83b45c79f255bd819a336a42aa266af55c20e985",
+              "mode": "0o644",
+              "uid": 65534,
+              "gid": 65534
+            }
+          },
+          "after": {
+            ".claude/settings.json": {
+              "exists": true,
+              "sha256": "2caa02c09946ea197fb9d159f013de70c358ed321143388f8a02524c09de7b45",
+              "mode": "0o644",
+              "uid": 65534,
+              "gid": 65534
+            },
+            "runtime/claude_code_gate/policy.py": {
+              "exists": true,
+              "sha256": "1db6a01965644092c6928091a00b2bfbf8c1b3700767a60cea4d12bd7b583bc7",
+              "mode": "0o644",
+              "uid": 65534,
+              "gid": 65534
+            },
+            ".weaver/gate/chronicle.jsonl": {
+              "exists": true,
+              "sha256": "042ac3534baec1913c5927979d82ec833d7d1a9570a96b1e38e10f9dadeaeb47",
+              "mode": "0o644",
+              "uid": 65534,
+              "gid": 65534
+            }
+          },
+          "changed": [
+            ".weaver/gate/chronicle.jsonl"
+          ]
+        },
+        {
+          "name": "tee",
+          "argv": [
+            "bash",
+            "-c",
+            "echo pwned | tee .claude/settings.json"
+          ],
+          "exit_code": 0,
+          "stderr_tail": "",
+          "before": {
+            ".claude/settings.json": {
+              "exists": true,
+              "sha256": "2caa02c09946ea197fb9d159f013de70c358ed321143388f8a02524c09de7b45",
+              "mode": "0o644",
+              "uid": 65534,
+              "gid": 65534
+            },
+            "runtime/claude_code_gate/policy.py": {
+              "exists": true,
+              "sha256": "1db6a01965644092c6928091a00b2bfbf8c1b3700767a60cea4d12bd7b583bc7",
+              "mode": "0o644",
+              "uid": 65534,
+              "gid": 65534
+            },
+            ".weaver/gate/chronicle.jsonl": {
+              "exists": true,
+              "sha256": "4bac7cda67a8003acf0f3aab83b45c79f255bd819a336a42aa266af55c20e985",
+              "mode": "0o644",
+              "uid": 65534,
+              "gid": 65534
+            }
+          },
+          "after": {
+            ".claude/settings.json": {
+              "exists": true,
+              "sha256": "1060092d1ce0ae5ca5ac11bc1d078c5fa9e263f3fb6c736293a5dbb018e59258",
+              "mode": "0o644",
+              "uid": 65534,
+              "gid": 65534
+            },
+            "runtime/claude_code_gate/policy.py": {
+              "exists": true,
+              "sha256": "1db6a01965644092c6928091a00b2bfbf8c1b3700767a60cea4d12bd7b583bc7",
+              "mode": "0o644",
+              "uid": 65534,
+              "gid": 65534
+            },
+            ".weaver/gate/chronicle.jsonl": {
+              "exists": true,
+              "sha256": "4bac7cda67a8003acf0f3aab83b45c79f255bd819a336a42aa266af55c20e985",
+              "mode": "0o644",
+              "uid": 65534,
+              "gid": 65534
+            }
+          },
+          "changed": [
+            ".claude/settings.json"
+          ]
+        },
+        {
+          "name": "sed_in_place",
+          "argv": [
+            "sed",
+            "-i",
+            "s/^/pwned/",
+            ".claude/settings.json"
+          ],
+          "exit_code": 0,
+          "stderr_tail": "",
+          "before": {
+            ".claude/settings.json": {
+              "exists": true,
+              "sha256": "2caa02c09946ea197fb9d159f013de70c358ed321143388f8a02524c09de7b45",
+              "mode": "0o644",
+              "uid": 65534,
+              "gid": 65534
+            },
+            "runtime/claude_code_gate/policy.py": {
+              "exists": true,
+              "sha256": "1db6a01965644092c6928091a00b2bfbf8c1b3700767a60cea4d12bd7b583bc7",
+              "mode": "0o644",
+              "uid": 65534,
+              "gid": 65534
+            },
+            ".weaver/gate/chronicle.jsonl": {
+              "exists": true,
+              "sha256": "4bac7cda67a8003acf0f3aab83b45c79f255bd819a336a42aa266af55c20e985",
+              "mode": "0o644",
+              "uid": 65534,
+              "gid": 65534
+            }
+          },
+          "after": {
+            ".claude/settings.json": {
+              "exists": true,
+              "sha256": "16103293ead44a153281e7fa3cd06f4a7c8702c1f3407a56c5e92933005cbf9e",
+              "mode": "0o644",
+              "uid": 65534,
+              "gid": 65534
+            },
+            "runtime/claude_code_gate/policy.py": {
+              "exists": true,
+              "sha256": "1db6a01965644092c6928091a00b2bfbf8c1b3700767a60cea4d12bd7b583bc7",
+              "mode": "0o644",
+              "uid": 65534,
+              "gid": 65534
+            },
+            ".weaver/gate/chronicle.jsonl": {
+              "exists": true,
+              "sha256": "4bac7cda67a8003acf0f3aab83b45c79f255bd819a336a42aa266af55c20e985",
+              "mode": "0o644",
+              "uid": 65534,
+              "gid": 65534
+            }
+          },
+          "changed": [
+            ".claude/settings.json"
+          ]
+        },
+        {
+          "name": "truncate",
+          "argv": [
+            "truncate",
+            "-s",
+            "0",
+            ".weaver/gate/chronicle.jsonl"
+          ],
+          "exit_code": 0,
+          "stderr_tail": "",
+          "before": {
+            ".claude/settings.json": {
+              "exists": true,
+              "sha256": "2caa02c09946ea197fb9d159f013de70c358ed321143388f8a02524c09de7b45",
+              "mode": "0o644",
+              "uid": 65534,
+              "gid": 65534
+            },
+            "runtime/claude_code_gate/policy.py": {
+              "exists": true,
+              "sha256": "1db6a01965644092c6928091a00b2bfbf8c1b3700767a60cea4d12bd7b583bc7",
+              "mode": "0o644",
+              "uid": 65534,
+              "gid": 65534
+            },
+            ".weaver/gate/chronicle.jsonl": {
+              "exists": true,
+              "sha256": "4bac7cda67a8003acf0f3aab83b45c79f255bd819a336a42aa266af55c20e985",
+              "mode": "0o644",
+              "uid": 65534,
+              "gid": 65534
+            }
+          },
+          "after": {
+            ".claude/settings.json": {
+              "exists": true,
+              "sha256": "2caa02c09946ea197fb9d159f013de70c358ed321143388f8a02524c09de7b45",
+              "mode": "0o644",
+              "uid": 65534,
+              "gid": 65534
+            },
+            "runtime/claude_code_gate/policy.py": {
+              "exists": true,
+              "sha256": "1db6a01965644092c6928091a00b2bfbf8c1b3700767a60cea4d12bd7b583bc7",
+              "mode": "0o644",
+              "uid": 65534,
+              "gid": 65534
+            },
+            ".weaver/gate/chronicle.jsonl": {
+              "exists": true,
+              "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+              "mode": "0o644",
+              "uid": 65534,
+              "gid": 65534
+            }
+          },
+          "changed": [
+            ".weaver/gate/chronicle.jsonl"
+          ]
+        },
+        {
+          "name": "rm",
+          "argv": [
+            "rm",
+            "-f",
+            ".claude/settings.json"
+          ],
+          "exit_code": 0,
+          "stderr_tail": "",
+          "before": {
+            ".claude/settings.json": {
+              "exists": true,
+              "sha256": "2caa02c09946ea197fb9d159f013de70c358ed321143388f8a02524c09de7b45",
+              "mode": "0o644",
+              "uid": 65534,
+              "gid": 65534
+            },
+            "runtime/claude_code_gate/policy.py": {
+              "exists": true,
+              "sha256": "1db6a01965644092c6928091a00b2bfbf8c1b3700767a60cea4d12bd7b583bc7",
+              "mode": "0o644",
+              "uid": 65534,
+              "gid": 65534
+            },
+            ".weaver/gate/chronicle.jsonl": {
+              "exists": true,
+              "sha256": "4bac7cda67a8003acf0f3aab83b45c79f255bd819a336a42aa266af55c20e985",
+              "mode": "0o644",
+              "uid": 65534,
+              "gid": 65534
+            }
+          },
+          "after": {
+            ".claude/settings.json": {
+              "exists": false
+            },
+            "runtime/claude_code_gate/policy.py": {
+              "exists": true,
+              "sha256": "1db6a01965644092c6928091a00b2bfbf8c1b3700767a60cea4d12bd7b583bc7",
+              "mode": "0o644",
+              "uid": 65534,
+              "gid": 65534
+            },
+            ".weaver/gate/chronicle.jsonl": {
+              "exists": true,
+              "sha256": "4bac7cda67a8003acf0f3aab83b45c79f255bd819a336a42aa266af55c20e985",
+              "mode": "0o644",
+              "uid": 65534,
+              "gid": 65534
+            }
+          },
+          "changed": [
+            ".claude/settings.json"
+          ]
+        },
+        {
+          "name": "chmod",
+          "argv": [
+            "chmod",
+            "666",
+            ".claude/settings.json"
+          ],
+          "exit_code": 0,
+          "stderr_tail": "",
+          "before": {
+            ".claude/settings.json": {
+              "exists": true,
+              "sha256": "2caa02c09946ea197fb9d159f013de70c358ed321143388f8a02524c09de7b45",
+              "mode": "0o644",
+              "uid": 65534,
+              "gid": 65534
+            },
+            "runtime/claude_code_gate/policy.py": {
+              "exists": true,
+              "sha256": "1db6a01965644092c6928091a00b2bfbf8c1b3700767a60cea4d12bd7b583bc7",
+              "mode": "0o644",
+              "uid": 65534,
+              "gid": 65534
+            },
+            ".weaver/gate/chronicle.jsonl": {
+              "exists": true,
+              "sha256": "4bac7cda67a8003acf0f3aab83b45c79f255bd819a336a42aa266af55c20e985",
+              "mode": "0o644",
+              "uid": 65534,
+              "gid": 65534
+            }
+          },
+          "after": {
+            ".claude/settings.json": {
+              "exists": true,
+              "sha256": "2caa02c09946ea197fb9d159f013de70c358ed321143388f8a02524c09de7b45",
+              "mode": "0o666",
+              "uid": 65534,
+              "gid": 65534
+            },
+            "runtime/claude_code_gate/policy.py": {
+              "exists": true,
+              "sha256": "1db6a01965644092c6928091a00b2bfbf8c1b3700767a60cea4d12bd7b583bc7",
+              "mode": "0o644",
+              "uid": 65534,
+              "gid": 65534
+            },
+            ".weaver/gate/chronicle.jsonl": {
+              "exists": true,
+              "sha256": "4bac7cda67a8003acf0f3aab83b45c79f255bd819a336a42aa266af55c20e985",
+              "mode": "0o644",
+              "uid": 65534,
+              "gid": 65534
+            }
+          },
+          "changed": [
+            ".claude/settings.json"
+          ]
+        },
+        {
+          "name": "chown",
+          "argv": [
+            "chown",
+            "nobody",
+            ".claude/settings.json"
+          ],
+          "exit_code": 0,
+          "stderr_tail": "",
+          "before": {
+            ".claude/settings.json": {
+              "exists": true,
+              "sha256": "2caa02c09946ea197fb9d159f013de70c358ed321143388f8a02524c09de7b45",
+              "mode": "0o644",
+              "uid": 65534,
+              "gid": 65534
+            },
+            "runtime/claude_code_gate/policy.py": {
+              "exists": true,
+              "sha256": "1db6a01965644092c6928091a00b2bfbf8c1b3700767a60cea4d12bd7b583bc7",
+              "mode": "0o644",
+              "uid": 65534,
+              "gid": 65534
+            },
+            ".weaver/gate/chronicle.jsonl": {
+              "exists": true,
+              "sha256": "4bac7cda67a8003acf0f3aab83b45c79f255bd819a336a42aa266af55c20e985",
+              "mode": "0o644",
+              "uid": 65534,
+              "gid": 65534
+            }
+          },
+          "after": {
+            ".claude/settings.json": {
+              "exists": true,
+              "sha256": "2caa02c09946ea197fb9d159f013de70c358ed321143388f8a02524c09de7b45",
+              "mode": "0o644",
+              "uid": 65534,
+              "gid": 65534
+            },
+            "runtime/claude_code_gate/policy.py": {
+              "exists": true,
+              "sha256": "1db6a01965644092c6928091a00b2bfbf8c1b3700767a60cea4d12bd7b583bc7",
+              "mode": "0o644",
+              "uid": 65534,
+              "gid": 65534
+            },
+            ".weaver/gate/chronicle.jsonl": {
+              "exists": true,
+              "sha256": "4bac7cda67a8003acf0f3aab83b45c79f255bd819a336a42aa266af55c20e985",
+              "mode": "0o644",
+              "uid": 65534,
+              "gid": 65534
+            }
+          },
+          "changed": []
+        },
+        {
+          "name": "rename_parent_dir",
+          "argv": [
+            "bash",
+            "-c",
+            "mv .claude .claude.old && mkdir .claude && echo pwned > .claude/settings.json"
+          ],
+          "exit_code": 0,
+          "stderr_tail": "",
+          "before": {
+            ".claude/settings.json": {
+              "exists": true,
+              "sha256": "2caa02c09946ea197fb9d159f013de70c358ed321143388f8a02524c09de7b45",
+              "mode": "0o644",
+              "uid": 65534,
+              "gid": 65534
+            },
+            "runtime/claude_code_gate/policy.py": {
+              "exists": true,
+              "sha256": "1db6a01965644092c6928091a00b2bfbf8c1b3700767a60cea4d12bd7b583bc7",
+              "mode": "0o644",
+              "uid": 65534,
+              "gid": 65534
+            },
+            ".weaver/gate/chronicle.jsonl": {
+              "exists": true,
+              "sha256": "4bac7cda67a8003acf0f3aab83b45c79f255bd819a336a42aa266af55c20e985",
+              "mode": "0o644",
+              "uid": 65534,
+              "gid": 65534
+            }
+          },
+          "after": {
+            ".claude/settings.json": {
+              "exists": true,
+              "sha256": "1060092d1ce0ae5ca5ac11bc1d078c5fa9e263f3fb6c736293a5dbb018e59258",
+              "mode": "0o644",
+              "uid": 65534,
+              "gid": 65534
+            },
+            "runtime/claude_code_gate/policy.py": {
+              "exists": true,
+              "sha256": "1db6a01965644092c6928091a00b2bfbf8c1b3700767a60cea4d12bd7b583bc7",
+              "mode": "0o644",
+              "uid": 65534,
+              "gid": 65534
+            },
+            ".weaver/gate/chronicle.jsonl": {
+              "exists": true,
+              "sha256": "4bac7cda67a8003acf0f3aab83b45c79f255bd819a336a42aa266af55c20e985",
+              "mode": "0o644",
+              "uid": 65534,
+              "gid": 65534
+            }
+          },
+          "changed": [
+            ".claude/settings.json"
+          ]
+        },
+        {
+          "name": "python_write",
+          "argv": [
+            "/usr/local/bin/python",
+            "-c",
+            "open('runtime/claude_code_gate/policy.py', 'w').write('pwned')"
+          ],
+          "exit_code": 0,
+          "stderr_tail": "",
+          "before": {
+            ".claude/settings.json": {
+              "exists": true,
+              "sha256": "2caa02c09946ea197fb9d159f013de70c358ed321143388f8a02524c09de7b45",
+              "mode": "0o644",
+              "uid": 65534,
+              "gid": 65534
+            },
+            "runtime/claude_code_gate/policy.py": {
+              "exists": true,
+              "sha256": "1db6a01965644092c6928091a00b2bfbf8c1b3700767a60cea4d12bd7b583bc7",
+              "mode": "0o644",
+              "uid": 65534,
+              "gid": 65534
+            },
+            ".weaver/gate/chronicle.jsonl": {
+              "exists": true,
+              "sha256": "4bac7cda67a8003acf0f3aab83b45c79f255bd819a336a42aa266af55c20e985",
+              "mode": "0o644",
+              "uid": 65534,
+              "gid": 65534
+            }
+          },
+          "after": {
+            ".claude/settings.json": {
+              "exists": true,
+              "sha256": "2caa02c09946ea197fb9d159f013de70c358ed321143388f8a02524c09de7b45",
+              "mode": "0o644",
+              "uid": 65534,
+              "gid": 65534
+            },
+            "runtime/claude_code_gate/policy.py": {
+              "exists": true,
+              "sha256": "c0fa141c657cce66ec88a9a6d56dab84feae35c2301dfed4b240528df8b8d6e1",
+              "mode": "0o644",
+              "uid": 65534,
+              "gid": 65534
+            },
+            ".weaver/gate/chronicle.jsonl": {
+              "exists": true,
+              "sha256": "4bac7cda67a8003acf0f3aab83b45c79f255bd819a336a42aa266af55c20e985",
+              "mode": "0o644",
+              "uid": 65534,
+              "gid": 65534
+            }
+          },
+          "changed": [
+            "runtime/claude_code_gate/policy.py"
+          ]
+        },
+        {
+          "name": "python_atomic_replace",
+          "argv": [
+            "/usr/local/bin/python",
+            "-c",
+            "import os; open('tmp-x', 'w').write('pwned'); os.replace('tmp-x', '.claude/settings.json')"
+          ],
+          "exit_code": 0,
+          "stderr_tail": "",
+          "before": {
+            ".claude/settings.json": {
+              "exists": true,
+              "sha256": "2caa02c09946ea197fb9d159f013de70c358ed321143388f8a02524c09de7b45",
+              "mode": "0o644",
+              "uid": 65534,
+              "gid": 65534
+            },
+            "runtime/claude_code_gate/policy.py": {
+              "exists": true,
+              "sha256": "1db6a01965644092c6928091a00b2bfbf8c1b3700767a60cea4d12bd7b583bc7",
+              "mode": "0o644",
+              "uid": 65534,
+              "gid": 65534
+            },
+            ".weaver/gate/chronicle.jsonl": {
+              "exists": true,
+              "sha256": "4bac7cda67a8003acf0f3aab83b45c79f255bd819a336a42aa266af55c20e985",
+              "mode": "0o644",
+              "uid": 65534,
+              "gid": 65534
+            }
+          },
+          "after": {
+            ".claude/settings.json": {
+              "exists": true,
+              "sha256": "c0fa141c657cce66ec88a9a6d56dab84feae35c2301dfed4b240528df8b8d6e1",
+              "mode": "0o644",
+              "uid": 65534,
+              "gid": 65534
+            },
+            "runtime/claude_code_gate/policy.py": {
+              "exists": true,
+              "sha256": "1db6a01965644092c6928091a00b2bfbf8c1b3700767a60cea4d12bd7b583bc7",
+              "mode": "0o644",
+              "uid": 65534,
+              "gid": 65534
+            },
+            ".weaver/gate/chronicle.jsonl": {
+              "exists": true,
+              "sha256": "4bac7cda67a8003acf0f3aab83b45c79f255bd819a336a42aa266af55c20e985",
+              "mode": "0o644",
+              "uid": 65534,
+              "gid": 65534
+            }
+          },
+          "changed": [
+            ".claude/settings.json"
+          ]
+        },
+        {
+          "name": "node_write_file",
+          "argv": [
+            "/opt/node22/bin/node",
+            "-e",
+            "require('fs').writeFileSync(\".claude/settings.json\", 'pwned')"
+          ],
+          "exit_code": 0,
+          "stderr_tail": "",
+          "before": {
+            ".claude/settings.json": {
+              "exists": true,
+              "sha256": "2caa02c09946ea197fb9d159f013de70c358ed321143388f8a02524c09de7b45",
+              "mode": "0o644",
+              "uid": 65534,
+              "gid": 65534
+            },
+            "runtime/claude_code_gate/policy.py": {
+              "exists": true,
+              "sha256": "1db6a01965644092c6928091a00b2bfbf8c1b3700767a60cea4d12bd7b583bc7",
+              "mode": "0o644",
+              "uid": 65534,
+              "gid": 65534
+            },
+            ".weaver/gate/chronicle.jsonl": {
+              "exists": true,
+              "sha256": "4bac7cda67a8003acf0f3aab83b45c79f255bd819a336a42aa266af55c20e985",
+              "mode": "0o644",
+              "uid": 65534,
+              "gid": 65534
+            }
+          },
+          "after": {
+            ".claude/settings.json": {
+              "exists": true,
+              "sha256": "c0fa141c657cce66ec88a9a6d56dab84feae35c2301dfed4b240528df8b8d6e1",
+              "mode": "0o644",
+              "uid": 65534,
+              "gid": 65534
+            },
+            "runtime/claude_code_gate/policy.py": {
+              "exists": true,
+              "sha256": "1db6a01965644092c6928091a00b2bfbf8c1b3700767a60cea4d12bd7b583bc7",
+              "mode": "0o644",
+              "uid": 65534,
+              "gid": 65534
+            },
+            ".weaver/gate/chronicle.jsonl": {
+              "exists": true,
+              "sha256": "4bac7cda67a8003acf0f3aab83b45c79f255bd819a336a42aa266af55c20e985",
+              "mode": "0o644",
+              "uid": 65534,
+              "gid": 65534
+            }
+          },
+          "changed": [
+            ".claude/settings.json"
+          ]
+        },
+        {
+          "name": "node_atomic_write",
+          "argv": [
+            "/opt/node22/bin/node",
+            "-e",
+            "const fs=require('fs');fs.writeFileSync('tmp-y','pwned');fs.renameSync('tmp-y',\".claude/settings.json\")"
+          ],
+          "exit_code": 0,
+          "stderr_tail": "",
+          "before": {
+            ".claude/settings.json": {
+              "exists": true,
+              "sha256": "2caa02c09946ea197fb9d159f013de70c358ed321143388f8a02524c09de7b45",
+              "mode": "0o644",
+              "uid": 65534,
+              "gid": 65534
+            },
+            "runtime/claude_code_gate/policy.py": {
+              "exists": true,
+              "sha256": "1db6a01965644092c6928091a00b2bfbf8c1b3700767a60cea4d12bd7b583bc7",
+              "mode": "0o644",
+              "uid": 65534,
+              "gid": 65534
+            },
+            ".weaver/gate/chronicle.jsonl": {
+              "exists": true,
+              "sha256": "4bac7cda67a8003acf0f3aab83b45c79f255bd819a336a42aa266af55c20e985",
+              "mode": "0o644",
+              "uid": 65534,
+              "gid": 65534
+            }
+          },
+          "after": {
+            ".claude/settings.json": {
+              "exists": true,
+              "sha256": "c0fa141c657cce66ec88a9a6d56dab84feae35c2301dfed4b240528df8b8d6e1",
+              "mode": "0o644",
+              "uid": 65534,
+              "gid": 65534
+            },
+            "runtime/claude_code_gate/policy.py": {
+              "exists": true,
+              "sha256": "1db6a01965644092c6928091a00b2bfbf8c1b3700767a60cea4d12bd7b583bc7",
+              "mode": "0o644",
+              "uid": 65534,
+              "gid": 65534
+            },
+            ".weaver/gate/chronicle.jsonl": {
+              "exists": true,
+              "sha256": "4bac7cda67a8003acf0f3aab83b45c79f255bd819a336a42aa266af55c20e985",
+              "mode": "0o644",
+              "uid": 65534,
+              "gid": 65534
+            }
+          },
+          "changed": [
+            ".claude/settings.json"
+          ]
+        }
+      ],
+      "attempts_that_changed_a_protected_file": [
+        "bash_redirect",
+        "bash_append",
+        "tee",
+        "sed_in_place",
+        "truncate",
+        "rm",
+        "chmod",
+        "rename_parent_dir",
+        "python_write",
+        "python_atomic_replace",
+        "node_write_file",
+        "node_atomic_write"
+      ]
+    }
+  ],
+  "sticky_bit_check": {
+    "layout": "root-owned files, project root 0777 without sticky bit",
+    "argv": [
+      "bash",
+      "-c",
+      "mv .claude .claude.old && mkdir .claude && echo pwned > .claude/settings.json"
+    ],
+    "exit_code": 0,
+    "changed": [
+      ".claude/settings.json"
+    ],
+    "sticky_bit_required": true
+  }
+}
