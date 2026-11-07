@@ -116,7 +116,7 @@ def test_verifier_rejects_replay_across_store_instances(tmp_path):
 
 def test_verifier_fails_closed_when_store_errors():
     class BrokenStore:
-        def check_and_store(self, nonce):
+        def check_and_store(self, nonce, *, expires_at=None):
             raise ReplayStoreError("disk gone")
 
         def contains(self, nonce):
@@ -145,7 +145,7 @@ def test_gate_vetoes_when_store_errors():
     from core.authority.gate import UncertaintyGate, request_hash, sign_override
 
     class BrokenStore:
-        def check_and_store(self, nonce):
+        def check_and_store(self, nonce, *, expires_at=None):
             raise ReplayStoreError("disk gone")
 
         def contains(self, nonce):
@@ -163,3 +163,94 @@ def test_cli_verify_rejects_replay_across_invocations_with_replay_db(tmp_path):
     assert subprocess.run(cmd + ["--replay-db", str(db)], capture_output=True).returncode == 0
     second = subprocess.run(cmd + ["--replay-db", str(db)], capture_output=True, text=True)
     assert second.returncode == 1 and "replay_detected" in second.stdout
+
+
+# --- Retention (GAP-002) --------------------------------------------------------
+
+from datetime import timedelta  # noqa: E402
+
+T0 = datetime(2026, 11, 7, 12, tzinfo=timezone.utc)
+
+
+@pytest.mark.parametrize("make", ["memory", "sqlite"])
+def test_prune_removes_only_expired_nonces(tmp_path, make):
+    store = InMemoryReplayCache() if make == "memory" else SqliteReplayStore(tmp_path / "r.sqlite")
+    store.check_and_store("expires-early", expires_at=T0)
+    store.check_and_store("expires-late", expires_at=T0 + timedelta(hours=1))
+    store.check_and_store("never-expires")  # envelope nonces: no expiry, kept forever
+
+    assert store.prune_expired(T0) == 0  # strictly before `now` only
+    assert store.prune_expired(T0 + timedelta(microseconds=1)) == 1
+    assert not store.contains("expires-early")
+    assert store.contains("expires-late") and store.contains("never-expires")
+    assert store.prune_expired(T0 + timedelta(days=365)) == 1
+    assert store.contains("never-expires")
+
+
+@pytest.mark.parametrize("make", ["memory", "sqlite"])
+def test_naive_datetimes_are_refused(tmp_path, make):
+    store = InMemoryReplayCache() if make == "memory" else SqliteReplayStore(tmp_path / "r.sqlite")
+    with pytest.raises(ReplayStoreError):
+        store.check_and_store("n", expires_at=datetime(2026, 11, 7, 12))
+    with pytest.raises(ReplayStoreError):
+        store.prune_expired(datetime(2026, 11, 7, 12))
+
+
+def _gate(db):
+    from core.authority.gate import UncertaintyGate
+
+    return UncertaintyGate(threshold=0.7, override_key=b"k" * 32, replay_cache=SqliteReplayStore(db))
+
+
+def _override(nonce="n-1"):
+    from core.authority.gate import request_hash, sign_override
+
+    return sign_override(
+        b"k" * 32, operator_id="op", reason="r", request_hash=request_hash({"action": "x"}),
+        nonce=nonce, issued_at=T0,
+    )
+
+
+def test_pruning_never_reopens_an_override_replay(tmp_path):
+    db = tmp_path / "r.sqlite"
+    gate, ov = _gate(db), _override()
+    assert gate.evaluate({"action": "x"}, 0.9, now=T0, override=ov).allowed
+
+    # Inside the override window the nonce cannot be pruned, so a replay is "replayed".
+    max_age = gate.override_max_age
+    assert SqliteReplayStore(db).prune_expired(T0 + max_age) == 0
+    again = _gate(db).evaluate({"action": "x"}, 0.9, now=T0 + max_age, override=ov)
+    assert again.reason == "override_rejected:replayed"
+
+    # Once the nonce is prunable, the override is already refused as expired.
+    later = T0 + max_age + timedelta(microseconds=1)
+    assert SqliteReplayStore(db).prune_expired(later) == 1
+    after = _gate(db).evaluate({"action": "x"}, 0.9, now=later, override=ov)
+    assert not after.allowed and after.reason == "override_rejected:expired"
+
+
+def test_envelope_nonces_are_never_pruned(tmp_path):
+    db = tmp_path / "r.sqlite"
+    assert verify_envelope(_valid_envelope(), SqliteReplayStore(db)).accepted
+    assert SqliteReplayStore(db).prune_expired(T0 + timedelta(days=10_000)) == 0
+    second = verify_envelope(_valid_envelope(), SqliteReplayStore(db))
+    assert not second.accepted and second.reason == "replay_detected"
+
+
+def test_store_created_before_retention_is_migrated(tmp_path):
+    import sqlite3
+
+    db = tmp_path / "old.sqlite"
+    conn = sqlite3.connect(db)
+    conn.execute(
+        "CREATE TABLE nonces (nonce TEXT PRIMARY KEY NOT NULL, first_seen TEXT NOT NULL) WITHOUT ROWID"
+    )
+    conn.execute("INSERT INTO nonces VALUES ('old-nonce', '2026-01-01T00:00:00+00:00')")
+    conn.commit()
+    conn.close()
+
+    store = SqliteReplayStore(db)
+    assert not store.check_and_store("old-nonce")  # still remembered
+    assert store.prune_expired(T0 + timedelta(days=10_000)) == 0  # no expiry: kept
+    assert store.check_and_store("new-nonce", expires_at=T0)
+    assert store.prune_expired(T0 + timedelta(seconds=1)) == 1

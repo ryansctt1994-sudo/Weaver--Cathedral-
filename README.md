@@ -235,7 +235,7 @@ python -m core.authority promote demo.authority_spine.001 E1 --evidence declared
 Remaining boundary:
 
 ```text
-Persistent replay: single-host SQLite store, no retention policy (GAP-002)
+Persistent replay: single-host SQLite store; expiring nonces can be pruned, envelope nonces are kept forever (GAP-002)
 Signature verification: not implemented (envelopes are unsigned; gate overrides use a shared HMAC key)
 E3 receipt bundle: builds and verifies; promotion report and governance decision missing (GAP-005)
 Independent reproduction: absent (GAP-006)
