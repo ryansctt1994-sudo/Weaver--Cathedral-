@@ -14,7 +14,7 @@ from .canonical import DEFAULT_PROFILE, canonicalize, profiled_sha256, verify_pr
 from .chronicle import Chronicle, verify_entries, verify_file
 from .gate import GateDecision, GateRecord, UncertaintyGate, normalized_entropy, request_hash, sign_override
 from .models import AuthorityEnvelope, PromotionDecision, Receipt, VerificationResult
-from .replay import InMemoryReplayCache
+from .replay import InMemoryReplayCache, ReplayStore, ReplayStoreError, SqliteReplayStore
 from .receipts import generate_receipt, verify_receipt
 from .verifier import verify_envelope, evaluate_promotion
 
@@ -37,6 +37,9 @@ __all__ = [
     "Receipt",
     "VerificationResult",
     "InMemoryReplayCache",
+    "ReplayStore",
+    "ReplayStoreError",
+    "SqliteReplayStore",
     "generate_receipt",
     "verify_receipt",
     "verify_envelope",

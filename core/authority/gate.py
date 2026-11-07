@@ -32,7 +32,7 @@ from typing import Any, Mapping, Sequence
 
 from .canonical import JCS_RFC8785, canonicalize, profiled_sha256
 from .chronicle import Chronicle
-from .replay import InMemoryReplayCache
+from .replay import InMemoryReplayCache, ReplayStore
 
 MIN_KEY_BYTES = 32
 OVERRIDE_VERSION = "weaver.gate.override.v1"
@@ -123,7 +123,9 @@ class UncertaintyGate:
 
     threshold: float
     override_key: bytes | None = None
-    replay_cache: InMemoryReplayCache = field(default_factory=InMemoryReplayCache)
+    # Use a SqliteReplayStore in anything long-lived: an in-memory cache forgets
+    # spent overrides on restart, so they could be presented again.
+    replay_cache: ReplayStore = field(default_factory=InMemoryReplayCache)
     chronicle: Chronicle | None = None
     override_max_age: timedelta = timedelta(minutes=5)
     clock_skew: timedelta = timedelta(seconds=30)

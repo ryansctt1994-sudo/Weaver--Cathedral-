@@ -12,7 +12,7 @@ from dataclasses import asdict
 from .chronicle import verify_file
 from .models import AuthorityEnvelope
 from .receipts import generate_receipt
-from .replay import InMemoryReplayCache
+from .replay import InMemoryReplayCache, SqliteReplayStore
 from .verifier import evaluate_promotion, verify_envelope
 
 
@@ -21,7 +21,9 @@ def load_json(path: str) -> dict:
 
 
 def cmd_verify(args: argparse.Namespace) -> int:
-    cache = InMemoryReplayCache()
+    # Without --replay-db each invocation starts with an empty cache, so the
+    # same envelope is accepted again on the next run.
+    cache = SqliteReplayStore(args.replay_db) if args.replay_db else InMemoryReplayCache()
     result = verify_envelope(load_json(args.envelope), cache)
     print(result.model_dump_json(indent=2))
     return 0 if result.accepted else 1
@@ -53,6 +55,7 @@ def build_parser() -> argparse.ArgumentParser:
 
     verify = sub.add_parser("verify", help="Verify an authority envelope")
     verify.add_argument("envelope")
+    verify.add_argument("--replay-db", default=None, help="SQLite nonce store; rejects replays across runs")
     verify.set_defaults(func=cmd_verify)
 
     receipt = sub.add_parser("receipt", help="Generate a receipt for an envelope")
