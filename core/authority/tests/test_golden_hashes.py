@@ -18,7 +18,7 @@ import pytest
 
 from core.authority.canonical import ZOREL_ASCII_V1, verify_profiled_sha256
 from core.authority.models import AuthorityEnvelope
-from core.authority.receipts import canonical_json, generate_receipt, payload_hash, sha256_json
+from core.authority.receipts import RECEIPT_V1, canonical_json, generate_receipt, payload_hash, sha256_json
 
 FIXTURES = Path("core/authority/fixtures")
 FIXED_AT = datetime(2026, 7, 8, tzinfo=timezone.utc)
@@ -49,22 +49,22 @@ def test_valid_fixture_payload_hash_is_golden():
     ],
 )
 def test_receipt_hash_is_golden(accepted, reason, expected):
-    receipt = generate_receipt(_valid_envelope(), accepted=accepted, reason=reason, created_at=FIXED_AT)
+    receipt = generate_receipt(_valid_envelope(), accepted=accepted, reason=reason, created_at=FIXED_AT, receipt_version=RECEIPT_V1)
     assert receipt.receipt_hash == expected
 
 
 def test_receipt_hash_depends_on_instant_not_timezone_spelling():
     plus_five = timezone(timedelta(hours=5))
     same_instant = FIXED_AT.astimezone(plus_five)
-    a = generate_receipt(_valid_envelope(), accepted=True, reason="golden_accept", created_at=FIXED_AT)
-    b = generate_receipt(_valid_envelope(), accepted=True, reason="golden_accept", created_at=same_instant)
+    a = generate_receipt(_valid_envelope(), accepted=True, reason="golden_accept", created_at=FIXED_AT, receipt_version=RECEIPT_V1)
+    b = generate_receipt(_valid_envelope(), accepted=True, reason="golden_accept", created_at=same_instant, receipt_version=RECEIPT_V1)
     assert a.receipt_hash == b.receipt_hash == GOLDEN_ACCEPT_RECEIPT_HASH
 
 
 @pytest.mark.parametrize("field", ["accepted", "reason", "created_at"])
 def test_each_receipt_field_is_bound_into_hash(field):
-    kwargs = {"accepted": True, "reason": "golden_accept", "created_at": FIXED_AT}
-    kwargs[field] = {
+    kwargs = {"accepted": True, "reason": "golden_accept", "created_at": FIXED_AT, "receipt_version": RECEIPT_V1}
+    kwargs[field] = {  # noqa: E501
         "accepted": False,
         "reason": "golden_accept ",
         "created_at": FIXED_AT + timedelta(microseconds=1),
@@ -80,7 +80,7 @@ def test_hashes_are_independent_of_hash_seed(seed):
         "from core.authority.models import AuthorityEnvelope;"
         "from core.authority.receipts import generate_receipt;"
         "e=AuthorityEnvelope.model_validate(json.load(open('core/authority/fixtures/valid_envelope.json')));"
-        "r=generate_receipt(e,accepted=True,reason='golden_accept',created_at=datetime(2026,7,8,tzinfo=timezone.utc));"
+        "r=generate_receipt(e,accepted=True,reason='golden_accept',created_at=datetime(2026,7,8,tzinfo=timezone.utc),receipt_version='weaver.authority.receipt.v1');"
         "sys.stdout.write(r.receipt_hash)"
     )
     out = subprocess.run(

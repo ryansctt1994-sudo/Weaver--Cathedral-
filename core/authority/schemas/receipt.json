@@ -18,7 +18,17 @@
   ],
   "properties": {
     "receipt_version": {
-      "const": "weaver.authority.receipt.v1"
+      "enum": [
+        "weaver.authority.receipt.v1",
+        "weaver.authority.receipt.v2"
+      ]
+    },
+    "hash_profile": {
+      "type": [
+        "string",
+        "null"
+      ],
+      "description": "v2: canonical-JSON profile the hash was computed under (core/authority/canonical.py). v1: absent or null."
     },
     "envelope_id": {
       "type": "string"
@@ -33,7 +43,15 @@
       "type": "string"
     },
     "evidence_level": {
-      "enum": ["E0", "E1", "E2", "E3", "E4", "E5", "E6"]
+      "enum": [
+        "E0",
+        "E1",
+        "E2",
+        "E3",
+        "E4",
+        "E5",
+        "E6"
+      ]
     },
     "accepted": {
       "type": "boolean"
@@ -53,5 +71,46 @@
       "type": "string",
       "pattern": "^[a-f0-9]{64}$"
     }
-  }
+  },
+  "allOf": [
+    {
+      "if": {
+        "properties": {
+          "receipt_version": {
+            "const": "weaver.authority.receipt.v2"
+          }
+        }
+      },
+      "then": {
+        "required": [
+          "hash_profile"
+        ],
+        "properties": {
+          "hash_profile": {
+            "enum": [
+              "weaver.c14n.v1",
+              "zorel.ascii.v1",
+              "jcs.rfc8785"
+            ]
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "receipt_version": {
+            "const": "weaver.authority.receipt.v1"
+          }
+        }
+      },
+      "then": {
+        "properties": {
+          "hash_profile": {
+            "type": "null"
+          }
+        }
+      }
+    }
+  ]
 }
