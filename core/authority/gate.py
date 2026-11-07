@@ -152,17 +152,18 @@ class UncertaintyGate:
         *,
         now: datetime,
         override: Mapping[str, Any] | None = None,
+        context: Mapping[str, Any] | None = None,
     ) -> GateRecord:
         try:
             req_hash = request_hash(request)
         except Exception:  # noqa: BLE001 - anything unhashable is a veto
-            return self._record(GateRecord(GateDecision.VETO, "request_not_canonicalizable", "", None, self.threshold), now)
+            return self._record(GateRecord(GateDecision.VETO, "request_not_canonicalizable", "", None, self.threshold), now, context)
 
         try:
             record = self._decide(req_hash, uncertainty, now, override)
         except Exception as exc:  # noqa: BLE001 - fail closed on any internal error
             record = GateRecord(GateDecision.VETO, f"gate_error:{type(exc).__name__}", req_hash, None, self.threshold)
-        return self._record(record, now)
+        return self._record(record, now, context)
 
     def _decide(self, req_hash: str, uncertainty: Any, now: datetime, override: Mapping[str, Any] | None) -> GateRecord:
         def veto(reason: str, u: float | None = None) -> GateRecord:
@@ -223,7 +224,7 @@ class UncertaintyGate:
             return "replayed"
         return None
 
-    def _record(self, record: GateRecord, now: datetime) -> GateRecord:
+    def _record(self, record: GateRecord, now: datetime, context: Mapping[str, Any] | None = None) -> GateRecord:
         if self.chronicle is None:
             return record
         data = {
@@ -234,6 +235,10 @@ class UncertaintyGate:
             "threshold": self.threshold,
             "override_operator": record.override_operator,
         }
+        if context is not None:
+            # Only added when given, so entries from callers that omit it are unchanged.
+            # A context that cannot be canonicalized fails the append below, which vetoes.
+            data["context"] = context
         try:
             entry = self.chronicle.append("gate.decision", data, recorded_at=now)
         except Exception as exc:  # noqa: BLE001 - an unrecorded allow is not allowed
