@@ -342,16 +342,19 @@ def audit(root: Path, config_path: Path | None = None) -> dict[str, Any]:
     waiver_hits = [0] * len(config["waivers"])
     scanned = 0
 
-    def resolve(f: Finding) -> Finding:
+    def resolve(f: Finding, full_line: str | None = None) -> Finding:
+        # Match against the whole line: f.text is truncated for the report, and
+        # a term past the cut would otherwise never match its entry.
+        line = full_line if full_line is not None else f.text
         for idx, b in enumerate(config["backed_claims"]):
-            if b["term"].lower() == f.term.lower() and fnmatch.fnmatch(f.file, b["file"]) and b["contains"] in f.text:
+            if b["term"].lower() == f.term.lower() and fnmatch.fnmatch(f.file, b["file"]) and b["contains"] in line:
                 backed_hits[idx] += 1
                 missing = [e for e in b["evidence"] if not (root / e).exists()]
                 if missing:
                     return Finding(f.file, f.line, f.term, "error", "evidence_missing", f.text, f"backed_claims[{idx}] evidence not found: {missing}")
                 return Finding(f.file, f.line, f.term, "info", "backed", f.text, f"backed_claims[{idx}]: {', '.join(b['evidence'])}")
         for idx, w in enumerate(config["waivers"]):
-            if w["term"].lower() == f.term.lower() and fnmatch.fnmatch(f.file, w["file"]) and w["contains"] in f.text:
+            if w["term"].lower() == f.term.lower() and fnmatch.fnmatch(f.file, w["file"]) and w["contains"] in line:
                 waiver_hits[idx] += 1
                 return Finding(f.file, f.line, f.term, "info", "waived", f.text, f"waivers[{idx}]: {w['reason']}")
         return f
@@ -381,11 +384,12 @@ def audit(root: Path, config_path: Path | None = None) -> dict[str, Any]:
                             line_no = unit.start + k
                             break
                         consumed += piece
-                    snippet = lines[line_no].strip()[:240] if line_no < len(lines) else unit_text[:240]
+                    full_line = lines[line_no].strip() if line_no < len(lines) else unit_text
+                    snippet = full_line[:240]
                     if is_denied(unit, unit_text, m.start(), m.end()):
                         findings.append(Finding(rel, line_no + 1, term, "info", "denied", snippet, "negated in context"))
                     else:
-                        findings.append(resolve(Finding(rel, line_no + 1, term, severity, "claim", snippet, "unbacked claim")))
+                        findings.append(resolve(Finding(rel, line_no + 1, term, severity, "claim", snippet, "unbacked claim"), full_line))
 
     for idx, hits in enumerate(backed_hits):
         if not hits:

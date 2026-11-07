@@ -167,6 +167,14 @@ def test_waiver_passes_and_is_counted_as_debt(tmp_path):
     assert report["passed"] and report["waiver_debt"] == 1
 
 
+def test_waiver_matches_beyond_the_report_snippet(tmp_path):
+    line = "x" * 300 + " the system is production-ready and reliable.\n"
+    config = {"waivers": [{"term": "production-ready", "file": "README.md", "contains": "production-ready and reliable", "reason": "r"}]}
+    report = ca.audit(make_repo(tmp_path, {"README.md": line}, config))
+    assert report["passed"], report["findings"]
+    assert [f["category"] for f in report["findings"] if f["file"] == "README.md"] == ["waived"]
+
+
 @pytest.mark.parametrize("key", ["waivers", "backed_claims"])
 def test_entries_that_match_nothing_fail_as_stale(tmp_path, key):
     entry = {"term": "validated", "file": "README.md", "contains": "text that changed"}
