@@ -24,3 +24,8 @@ jobs:
 
       - name: Run tests
         run: pytest -q
+
+      - name: Run authority spine demo
+        run: |
+          bash forge/demos/authority_spine_001/scripts/run.sh
+          bash forge/demos/authority_spine_001/scripts/verify.sh
