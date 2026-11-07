@@ -166,3 +166,15 @@ def test_any_single_value_edit_is_detected(payloads, data):
     entries[target]["data"] = {**entries[target]["data"], "__tamper__": True}
     result = verify_entries(entries)
     assert not result.ok and result.first_bad_index == target
+
+
+def test_returned_entries_cannot_edit_the_live_chain():
+    chron = build(3)
+    head = chron.head_hash
+    chron.entries[1]["data"]["note"] = "edited through a returned copy"
+    returned = chron.append("test.event", {"nested": {"k": 1}}, recorded_at=T0 + timedelta(seconds=9))
+    returned["data"]["nested"]["k"] = 2
+    assert chron.verify().ok
+    assert chron.entries[1]["data"]["note"] == "event 1"
+    assert chron.entries[-1]["data"]["nested"]["k"] == 1
+    assert chron.entries[-2]["entry_hash"] == head

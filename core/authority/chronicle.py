@@ -21,6 +21,7 @@ Bounds: single writer, local file. No multi-process locking, no signatures.
 
 from __future__ import annotations
 
+import copy
 import json
 import os
 from dataclasses import dataclass
@@ -121,7 +122,8 @@ class Chronicle:
 
     @property
     def entries(self) -> list[dict[str, Any]]:
-        return [dict(entry) for entry in self._entries]
+        # Deep copies: callers must not be able to edit the live chain.
+        return copy.deepcopy(self._entries)
 
     @property
     def head_hash(self) -> str:
@@ -159,7 +161,7 @@ class Chronicle:
                 handle.flush()
                 os.fsync(handle.fileno())
         self._entries.append(stored)
-        return dict(stored)
+        return copy.deepcopy(stored)
 
     def verify(self, expected_head: str | None = None) -> ChronicleVerification:
         return verify_entries(self._entries, expected_head)
