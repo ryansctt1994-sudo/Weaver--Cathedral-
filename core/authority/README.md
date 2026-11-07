@@ -27,7 +27,7 @@ NO BOUNDARY = NO AUTHORITY
 ## What this module does not do yet
 
 - It does not provide public-key signatures. Gate overrides use a shared HMAC key.
-- The persistent replay store is single-host and keeps every nonce (no retention policy yet). A gate that accepts overrides must be given a replay store explicitly (`SqliteReplayStore` for anything long-lived, `InMemoryReplayCache` only in tests and one-shot demos); there is no silent in-memory default (GAP-002).
+- The persistent replay store is single-host. Retention: `prune_expired(now)` removes only nonces stored with an `expires_at` that has passed. Gate override nonces expire at `issued_at + override_max_age`, after which the override is refused as expired anyway; envelope nonces have no expiry and are never pruned. `now` must come from the same clock the gate uses. Nothing prunes on a schedule. A gate that accepts overrides must be given a replay store explicitly (`SqliteReplayStore` for anything long-lived, `InMemoryReplayCache` only in tests and one-shot demos); there is no silent in-memory default (GAP-002).
 - The Chronicle is single-writer and local. It has no multi-process locking and no signed head.
 - It does not grant legal, clinical, defense, safety, AGI, ASI, or production authority.
 - It does not prove real-world legitimacy.

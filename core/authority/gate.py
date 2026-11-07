@@ -214,7 +214,12 @@ class UncertaintyGate:
             return "issued_in_future"
         if now - issued > self.override_max_age:
             return "expired"
-        if not self.replay_cache.check_and_store(f"gate-override:{override['nonce']}"):
+        # After issued + override_max_age this override is refused as expired by the
+        # check above, so from then on its nonce may be pruned (GAP-002). This holds
+        # only if prune_expired() is given the same clock as `now` here.
+        if not self.replay_cache.check_and_store(
+            f"gate-override:{override['nonce']}", expires_at=issued + self.override_max_age
+        ):
             return "replayed"
         return None
 
