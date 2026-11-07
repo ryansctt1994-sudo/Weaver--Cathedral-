@@ -33,7 +33,7 @@
 |---|---:|---:|---|---|
 | GAP-002 | Replay cache not yet persistent/atomic | G3 | PARTIAL | `SqliteReplayStore` (`core/authority/replay.py`) is persistent and atomic across processes and restarts on one host: in a test, 8 processes race for the same 50 nonces and each nonce is accepted exactly once. The verifier fails closed (`replay_store_unavailable`) when the store errors, and `weaver-authority verify --replay-db` rejects replays across runs. Remaining: retention/pruning policy, multi-host storage, and making the persistent store the default wherever overrides are accepted. |
 | GAP-003 | Agent harness not yet connected to governance gates | G4 | OPEN | Build role-policy-bound orchestrator adapter. |
-| GAP-004 | Skill format not yet defined beyond scaffold/spec | G2 | PARTIAL | `skills/SKILL_SPEC.md` exists. Add concrete skills with schemas, examples, tests, and receipts. |
+| GAP-004 | Skill format not yet defined beyond scaffold/spec | G2 | PARTIAL | First concrete skill: `skills/governance/claim_audit/` (manifest, SKILL.md, input/output schemas, example, risk, receipts, contract tests; declared E1). `tests/test_skill_packages.py` rejects any skill package that doesn't meet `SKILL_SPEC.md`. Remaining: the other skills in the spec's first-skills list, and skill receipts recorded in a chronicle. |
 | GAP-005 | Demonstration-as-evidence package is not yet E3 complete | G3 | PARTIAL | `forge/demos/authority_spine_001/scripts/bundle.py` builds the package: receipts, 8 failure-path transcripts, a hash-chained chronicle, pytest log, environment, a manifest of bundle and source hashes, and REPLAY.md. `verify_bundle.py` checks every hash, the chronicle head and every receipt, and rebuilds the bundle to require byte-identical deterministic files. CI builds and verifies it on Python 3.11–3.13, uploads it, and requires the deterministic files to match across versions. Remaining: a promotion report and the governance decision. This is not independent reproduction (GAP-006). |
 | GAP-006 | Independent reproduction absent | G5 | OPEN | External witness must replay E3 package. |
 | GAP-007 | Source repos have mixed maturity and claims | G4 | OPEN | Import only bounded, tested pieces; quarantine unsupported claims. |
@@ -64,6 +64,8 @@ legal authority
 defense-ready
 independently verified
 ```
+
+Enforced by `skills/governance/claim_audit` in CI. An unbacked use of any term above fails the build. A use that is true goes in `governance/claims.json` with its evidence files. A use that isn't a claim (a definition, or a quoted rule) is waived there with a reason, and waivers are counted as debt.
 
 ---
 

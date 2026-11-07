@@ -3,7 +3,7 @@
 **Folder:** `skills/`
 **Purpose:** Governed skill packages for agents.
 **Authority Level:** `CANDIDATE_SPINE`
-**Evidence:** Spec only (`SKILL_SPEC.md`). No concrete skills yet (GAP-004).
+**Evidence:** One concrete skill, `governance/claim_audit` (declared E1; contract tests run in CI). `tests/test_skill_packages.py` checks every package against `SKILL_SPEC.md` (GAP-004).
 
 **Allowed contents:** Skill packages in the structure `SKILL_SPEC.md` defines: instructions, manifest, input/output schemas, examples, tests, risk and receipt notes.
 

@@ -1,0 +1,87 @@
+{
+  "version": 1,
+  "exclude": [
+    {
+      "glob": "core/authority/fixtures/external/**",
+      "reason": "Verbatim copy of zorel-kernel's sealed receipt body. It is test data, and editing it would break the cross-repo hash test."
+    },
+    {
+      "glob": "skills/governance/claim_audit/claim_audit.py",
+      "reason": "Defines the blocked and watch term lists the audit searches for."
+    },
+    {
+      "glob": "skills/governance/claim_audit/tests/**",
+      "reason": "Test fixtures contain claims on purpose so the audit has something to find."
+    },
+    {
+      "glob": "skills/governance/claim_audit/examples/**",
+      "reason": "Example output reproduces findings from a deliberately overclaiming fixture."
+    }
+  ],
+  "backed_claims": [
+    {
+      "term": "tamper-evident",
+      "file": "core/authority/README.md",
+      "contains": "tamper-evident, hash-chained Chronicle",
+      "evidence": [
+        "core/authority/chronicle.py",
+        "core/authority/tests/test_chronicle.py"
+      ],
+      "note": "Edit, delete, insert and reorder are detected at the exact index; tail truncation against an anchored head. Property-tested."
+    },
+    {
+      "term": "tamper-evident",
+      "file": "core/authority/__init__.py",
+      "contains": "tamper-evident, hash-chained chronicle",
+      "evidence": [
+        "core/authority/chronicle.py",
+        "core/authority/tests/test_chronicle.py"
+      ],
+      "note": "Same claim as core/authority/README.md."
+    }
+  ],
+  "waivers": [
+    {
+      "term": "validated",
+      "file": "governance/evidence_ladder.md",
+      "contains": "Domain validated within stated scope",
+      "reason": "Defines the wording permitted at E5. It is not a claim about this repository."
+    },
+    {
+      "term": "certified",
+      "file": "governance/evidence_ladder.md",
+      "contains": "Production certified within stated scope",
+      "reason": "Defines the wording permitted at E6. It is not a claim about this repository."
+    },
+    {
+      "term": "certified",
+      "file": "README.md",
+      "contains": "E6  Production-certified deployment where applicable",
+      "reason": "README copy of the evidence ladder: defines the E6 level. It is not a claim about this repository."
+    },
+    {
+      "term": "autonomous",
+      "file": "skills/SKILL_SPEC.md",
+      "contains": "autonomous loops",
+      "reason": "Risk-table row: classifies autonomous loops as high risk requiring human approval. Not a capability claim."
+    },
+    {
+      "term": "safe",
+      "file": "README.md",
+      "contains": "simulation safe zones",
+      "reason": "Target-architecture sketch of a planned runtime/sandbox directory that does not exist yet. Candidate for rewording."
+    },
+    {
+      "term": "immutable",
+      "file": "README.md",
+      "contains": "immutable evidence record",
+      "reason": "Defines a planned memory classification (GAP-009), not an implemented property. Candidate for rewording."
+    },
+    {
+      "term": "proven",
+      "file": "README.md",
+      "contains": "HOLD beyond proven evidence",
+      "reason": "States that promotion is held beyond proven evidence; does not claim anything is proven."
+    }
+  ]
+}

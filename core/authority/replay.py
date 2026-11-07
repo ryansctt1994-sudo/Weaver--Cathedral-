@@ -85,8 +85,8 @@ class SqliteReplayStore:
             conn.close()
 
     def _connect(self) -> sqlite3.Connection:
-        # A fresh connection per call keeps the store safe to use from
-        # threads and from processes created after construction.
+        # A fresh connection per call lets the store be used from threads
+        # and from processes created after construction.
         try:
             return sqlite3.connect(self.path, timeout=self.timeout_s, isolation_level=None)
         except sqlite3.Error as exc:

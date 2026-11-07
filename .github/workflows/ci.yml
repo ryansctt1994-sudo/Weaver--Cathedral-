@@ -45,6 +45,31 @@ jobs:
           path: forge/demos/authority_spine_001/bundle
           if-no-files-found: error
 
+  claim-audit:
+    # governance.claim_audit enforces the Blocking Rule in governance/open_gap_ledger.md:
+    # an unbacked blocked term anywhere in the repo fails the build.
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install package
+        run: python -m pip install -e .
+
+      - name: Audit claims
+        run: python skills/governance/claim_audit/claim_audit.py . --json claim-audit-report.json
+
+      - name: Upload claim audit report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: claim-audit-report
+          path: claim-audit-report.json
+
   bundle-determinism:
     # Replay across interpreters: every deterministic bundle file must be
     # byte-identical whichever Python version built it.
