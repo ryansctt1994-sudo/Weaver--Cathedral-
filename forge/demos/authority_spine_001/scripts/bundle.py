@@ -142,7 +142,8 @@ def build(out: Path, *, run_pytest: bool = True) -> dict:
     p = evaluate_promotion(DEMO_ID, "E3", ["receipt_bundle", "logs"])
     failure("promotion_missing_evidence", "promotion_blocked_missing_evidence", p.reason, {"required_missing": p.required_missing})
 
-    gate = UncertaintyGate(threshold=0.7, override_key=DEMO_OVERRIDE_KEY)
+    # In-memory on purpose: a one-shot, reproducible demo. Long-lived gates use SqliteReplayStore.
+    gate = UncertaintyGate(threshold=0.7, override_key=DEMO_OVERRIDE_KEY, replay_cache=InMemoryReplayCache())
     req = {"action": "promote", "artifact": DEMO_ID}
     uncertainty = normalized_entropy([0.25, 0.25, 0.25, 0.25])
     g = gate.evaluate(req, uncertainty, now=FIXED_AT)
