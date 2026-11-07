@@ -64,20 +64,24 @@ def chronicle_entries(project):
 
 
 def test_role_table_matches_spec_bindings():
-    assert ROLE_PERMISSIONS["Planner"] == {"read", "bash_read"}
+    assert ROLE_PERMISSIONS["Planner"] == {"read", "bash_read", "delegate"}
+    assert ROLE_PERMISSIONS["Researcher"] == {"read", "bash_read"}
+    assert "delegate" in ROLE_PERMISSIONS["Builder"] and "delegate" not in ROLE_PERMISSIONS["Verifier"]
     assert "write" in ROLE_PERMISSIONS["Builder"] and "bash_test" not in ROLE_PERMISSIONS["Builder"]
     assert "bash_test" in ROLE_PERMISSIONS["Verifier"] and "write" not in ROLE_PERMISSIONS["Verifier"]
     assert ROLE_PERMISSIONS["Operator"] == frozenset()
 
 
-def test_role_comes_from_agent_type_then_environment():
-    assert resolve_role({"agent_type": "Builder"}, {"WEAVER_GATE_ROLE": "Planner"}) == "Builder"
-    assert resolve_role({}, {"WEAVER_GATE_ROLE": "Planner"}) == "Planner"
-    assert resolve_role({}, {}) is None
+def test_role_and_ceiling_resolution():
+    # (role, ceiling): the environment role is always the ceiling.
+    assert resolve_role({"agent_type": "Builder"}, {"WEAVER_GATE_ROLE": "Planner"}) == ("Builder", "Planner")
+    assert resolve_role({}, {"WEAVER_GATE_ROLE": "Planner"}) == ("Planner", "Planner")
+    assert resolve_role({}, {}) == (None, None)
+    assert resolve_role({"agent_type": "Builder"}, {}) == ("Builder", None)
 
 
 def test_subagent_without_agent_type_gets_no_role_even_with_environment_role():
-    assert resolve_role({"agent_id": "a1"}, {"WEAVER_GATE_ROLE": "Builder"}) is None
+    assert resolve_role({"agent_id": "a1"}, {"WEAVER_GATE_ROLE": "Builder"}) == (None, "Builder")
 
 
 @pytest.mark.parametrize("role", [None, "", "builder", "Root", "Operator", 5, ["Builder"]])
@@ -257,6 +261,9 @@ def test_allowed_call_exits_zero_and_is_chronicled(project):
     assert entry["data"]["context"] == {
         "policy_version": POLICY_VERSION,
         "role": "Planner",
+        "ceiling": "Planner",
+        "agent_id": None,
+        "permissions": ["bash_read", "delegate", "read"],
         "tool": "Read",
         "rule": "read_inside_project",
         "target": "src/app.py",
@@ -275,6 +282,8 @@ def test_vetoed_call_exits_two_and_writes_a_structured_denial(project):
     assert denial == {
         "schema": "weaver.claude_code_gate.denial.v1",
         "role": "Builder",
+        "ceiling": "Builder",
+        "agent_id": None,
         "tool": "Bash",
         "rule": "bash_not_allowlisted",
         "reason": "rm is not on the allowlist",
@@ -396,3 +405,71 @@ def test_hook_blocks_instead_of_waiting_forever_on_a_busy_lock(project):
     assert result.returncode == 2
     assert "chronicle lock busy" in result.stderr
     assert elapsed < 10, elapsed
+
+
+# --- Delegation ceiling (G2) ----------------------------------------------------
+
+
+def test_subagent_permissions_are_capped_by_the_session_ceiling(project):
+    # A Builder-typed subagent under a Planner session cannot write.
+    decision = decide("Edit", {"file_path": "src/app.py"}, project, "Builder", "Planner")
+    assert not decision.allowed and decision.rule == "role_not_permitted"
+    # A Researcher-typed subagent under a Builder session can read but not write.
+    assert decide("Read", {"file_path": "src/app.py"}, project, "Researcher", "Builder").allowed
+    assert not decide("Edit", {"file_path": "src/app.py"}, project, "Researcher", "Builder").allowed
+
+
+def test_no_ceiling_denies_even_a_known_agent_type(project):
+    decision = decide("Read", {"file_path": "src/app.py"}, project, "Builder", None)
+    assert not decision.allowed and decision.rule == "unknown_ceiling"
+
+
+@pytest.mark.parametrize(
+    ("caller", "ceiling", "target", "allowed", "rule"),
+    [
+        ("Builder", "Builder", "Researcher", True, "delegate_within_ceiling"),
+        ("Builder", "Builder", "Builder", True, "delegate_within_ceiling"),
+        ("Planner", "Planner", "Researcher", True, "delegate_within_ceiling"),
+        ("Planner", "Planner", "Builder", False, "delegation_escalation"),
+        ("Builder", "Builder", "Verifier", False, "delegation_escalation"),
+        ("Researcher", "Researcher", "Researcher", False, "role_not_permitted"),
+        ("Verifier", "Verifier", "Researcher", False, "role_not_permitted"),
+        ("Builder", "Builder", "general-purpose", False, "unknown_subagent_role"),
+        ("Builder", "Builder", None, False, "unknown_subagent_role"),
+        # A Builder-typed subagent under a Planner ceiling has no write, so it
+        # cannot hand write to a nested Builder either.
+        ("Builder", "Planner", "Builder", False, "delegation_escalation"),
+    ],
+)
+def test_delegation_cannot_escalate(project, caller, ceiling, target, allowed, rule):
+    decision = decide("Agent", {"subagent_type": target, "prompt": "x"}, project, caller, ceiling)
+    assert decision.allowed is allowed and decision.rule == rule, decision
+
+
+def test_legacy_task_tool_name_is_treated_as_delegation(project):
+    assert decide("Task", {"subagent_type": "Researcher"}, project, "Builder").allowed
+    assert not decide("Task", {"subagent_type": "Builder"}, project, "Planner").allowed
+
+
+@pytest.mark.parametrize(
+    "extra",
+    [
+        {"agent_id": "sub-1"},                               # subagent with no agent_type
+        {"agent_id": "sub-1", "agent_type": 7},              # non-string agent_type
+        {"agent_id": "sub-1", "agent_type": "general-purpose"},  # not a known role
+        {"agent_id": "sub-1", "agent_type": "Operator"},     # holds nothing
+    ],
+)
+def test_malformed_or_unknown_subagent_events_are_blocked_by_the_hook(project, extra):
+    body = payload("Read", {"file_path": "src/app.py"}, str(project), **extra)
+    assert run_hook(project, body, role="Builder").returncode == 2
+
+
+def test_subagent_decision_is_chronicled_with_ceiling_and_agent_id(project):
+    body = payload("Edit", {"file_path": "src/app.py"}, str(project), agent_id="sub-9", agent_type="Researcher")
+    assert run_hook(project, body, role="Builder").returncode == 2
+    [entry] = chronicle_entries(project)
+    ctx = entry["data"]["context"]
+    assert (ctx["role"], ctx["ceiling"], ctx["agent_id"]) == ("Researcher", "Builder", "sub-9")
+    assert ctx["permissions"] == ["bash_read", "read"]
+    assert ctx["denial"]["rule"] == "role_not_permitted"

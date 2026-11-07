@@ -22,14 +22,19 @@ The roles follow SKILL_SPEC's agent binding.
 
 | Role | Permissions |
 |---|---|
-| Planner, Researcher, Sentinel | Read tools; read-only Bash |
-| Builder | Read tools; read-only Bash; Edit, Write, MultiEdit and NotebookEdit inside the project |
+| Planner | Read tools; read-only Bash; delegate |
+| Researcher, Sentinel | Read tools; read-only Bash |
+| Builder | Read tools; read-only Bash; Edit, Write, MultiEdit and NotebookEdit inside the project; delegate |
 | Verifier | Read tools; read-only Bash; `pytest` and `python -m pytest` (without plugin or config flags) |
 | Operator | None. The human-authorized override path is not implemented. |
 
 Anything else is denied: no role, an unknown role, a subagent with no `agent_type`, unknown tools, MCP tools, and malformed input.
 
-**Where the role comes from.** The hook input's `agent_type` is used when Claude Code sends it, for a subagent or a session started with `--agent`. Otherwise the role comes from the `WEAVER_GATE_ROLE` environment variable, which `.claude/settings.json` sets for the main thread. A subagent with an `agent_id` but no `agent_type` is denied, so it cannot inherit the main thread's role.
+**Where the role comes from, and the ceiling.** `WEAVER_GATE_ROLE`, set in `.claude/settings.json`, is the session's **ceiling**. On the main thread, the role is the ceiling. When Claude Code sends `agent_type` (a subagent, or a session started with `--agent`), that is the role. Its permissions are **intersected with the ceiling**, so a subagent can never hold anything its session does not. A subagent with an `agent_id` but no `agent_type` gets no role. With no ceiling set, every call is denied.
+
+**Delegation.** The `Agent` tool (also `Task`) needs the `delegate` permission. The `subagent_type` must be a known role. The spawn is refused (`delegation_escalation`) when that role would hold any permission the caller does not hold under its ceiling. A Planner therefore cannot hand writes to a Builder subagent. The ceiling also applies to every call the subagent makes, so the spawn check is not the only barrier.
+
+Subagent definitions (`.claude/agents/*.md`) whose `name` is a role name get that role, capped by the ceiling. Any other agent type, such as `general-purpose`, is denied.
 
 ## Path and Bash rules
 

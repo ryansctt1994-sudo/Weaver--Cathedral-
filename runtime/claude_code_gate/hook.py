@@ -4,11 +4,12 @@ Exit 0 lets the call continue to Claude Code's normal permission flow. Exit 2
 blocks it, and Claude Code shows the stderr text to the model. Any internal
 error also exits 2. gate.sh covers the cases where Python itself fails.
 
-Role. The role comes from the hook input's agent_type when Claude Code sends
-it (a subagent, or a session started with --agent). Otherwise it comes from
-the WEAVER_GATE_ROLE environment variable, which .claude/settings.json sets for
-the main thread. A subagent that has an agent_id but no agent_type gets no
-role and is denied, so it cannot inherit the main thread's role.
+Role and ceiling. WEAVER_GATE_ROLE, set in .claude/settings.json, is the
+session's ceiling. On the main thread the role is the ceiling. When Claude Code
+sends agent_type (a subagent, or a session started with --agent), that is the
+role, and the policy caps it at the ceiling, so delegation can only narrow
+permissions. A subagent that has an agent_id but no agent_type gets no role and
+is denied. With no ceiling set, every call is denied.
 
 Audit. Every decision, allowed or blocked, is appended to the chronicle at
 <project>/.weaver/gate/chronicle.jsonl. Each entry records the policy version,
@@ -30,7 +31,7 @@ from typing import Any, Mapping, TextIO
 
 from core.authority.chronicle import Chronicle
 from core.authority.gate import UncertaintyGate
-from runtime.claude_code_gate.policy import POLICY_VERSION, decide
+from runtime.claude_code_gate.policy import POLICY_VERSION, decide, effective_permissions
 
 THRESHOLD = 0.7
 STATE_DIR = Path(".weaver") / "gate"
@@ -64,12 +65,14 @@ def lock_timeout(env: Mapping[str, str]) -> float:
     return value if value > 0 else DEFAULT_LOCK_TIMEOUT_S
 
 
-def resolve_role(payload: Mapping[str, Any], env: Mapping[str, str]) -> Any:
+def resolve_role(payload: Mapping[str, Any], env: Mapping[str, str]) -> tuple[Any, Any]:
+    """Return (role, ceiling)."""
+    ceiling = env.get("WEAVER_GATE_ROLE") or None
     if "agent_type" in payload:
-        return payload["agent_type"]
+        return payload["agent_type"], ceiling
     if "agent_id" in payload:
-        return None  # a subagent without an agent type gets no role
-    return env.get("WEAVER_GATE_ROLE") or None
+        return None, ceiling  # a subagent without an agent type gets no role
+    return ceiling, ceiling
 
 
 def run_hook(stdin: TextIO, stderr: TextIO, env: Mapping[str, str], now: datetime | None = None) -> int:
@@ -79,14 +82,18 @@ def run_hook(stdin: TextIO, stderr: TextIO, env: Mapping[str, str], now: datetim
         return 2
 
     root = Path(env.get("CLAUDE_PROJECT_DIR") or payload.get("cwd") or os.getcwd())
-    role = resolve_role(payload, env)
+    role, ceiling = resolve_role(payload, env)
     tool_name = payload.get("tool_name")
     tool_input = payload.get("tool_input")
-    decision = decide(tool_name, tool_input, root, role)
+    decision = decide(tool_name, tool_input, root, role, ceiling)
+    perms = effective_permissions(role, ceiling)
 
     context: dict[str, Any] = {
         "policy_version": POLICY_VERSION,
         "role": role,
+        "ceiling": ceiling,
+        "agent_id": payload.get("agent_id"),
+        "permissions": sorted(perms) if perms is not None else None,
         "tool": tool_name,
         "rule": decision.rule,
         "target": decision.target,
@@ -95,6 +102,8 @@ def run_hook(stdin: TextIO, stderr: TextIO, env: Mapping[str, str], now: datetim
         context["denial"] = {
             "schema": DENIAL_SCHEMA,
             "role": role,
+            "ceiling": ceiling,
+            "agent_id": payload.get("agent_id"),
             "tool": tool_name,
             "rule": decision.rule,
             "reason": decision.reason,
@@ -107,7 +116,7 @@ def run_hook(stdin: TextIO, stderr: TextIO, env: Mapping[str, str], now: datetim
         acquire_lock(lock, lock_timeout(env))
         gate = UncertaintyGate(threshold=THRESHOLD, chronicle=Chronicle(state / "chronicle.jsonl"))
         record = gate.evaluate(
-            {"tool": tool_name, "input": tool_input, "role": role},
+            {"tool": tool_name, "input": tool_input, "role": role, "ceiling": ceiling, "agent_id": payload.get("agent_id")},
             0.0 if decision.allowed else 1.0,
             now=now or datetime.now(timezone.utc),
             context=context,
@@ -116,7 +125,7 @@ def run_hook(stdin: TextIO, stderr: TextIO, env: Mapping[str, str], now: datetim
     if record.allowed:
         return 0
     print(
-        f"Blocked by Weaver gate (role {role}, rule {decision.rule}, {record.reason}): {decision.reason}",
+        f"Blocked by Weaver gate (role {role}, ceiling {ceiling}, rule {decision.rule}, {record.reason}): {decision.reason}",
         file=stderr,
     )
     return 2
