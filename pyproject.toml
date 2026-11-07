@@ -23,5 +23,5 @@ weaver-authority = "core.authority.cli:main"
 include = ["core*"]
 
 [tool.pytest.ini_options]
-testpaths = ["core/authority/tests"]
+testpaths = ["core/authority/tests", "tests"]
 pythonpath = ["."]

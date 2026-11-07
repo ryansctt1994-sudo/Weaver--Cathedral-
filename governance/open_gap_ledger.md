@@ -37,11 +37,12 @@
 | GAP-005 | Demonstration-as-evidence package is not yet E3 complete | G3 | PARTIAL | Authority spine demo scaffold exists under `forge/demos/authority_spine_001`. Close after demo run logs, receipt bundle, artifact hashes, replay instructions, and failure transcript are captured. |
 | GAP-006 | Independent reproduction absent | G5 | OPEN | External witness must replay E3 package. |
 | GAP-007 | Source repos have mixed maturity and claims | G4 | OPEN | Import only bounded, tested pieces; quarantine unsupported claims. |
-| GAP-008 | Symbolic/prompt systems not separated from runtime authority yet | G4 | OPEN | Enforce `loom/` versus `forge/` separation in tests. |
+| GAP-008 | Symbolic/prompt systems not separated from runtime authority yet | G4 | PARTIAL | `tests/test_no_liturgical_artifacts.py` enforces it: STATUS.md authority declarations per zone, no Loom imports or paths from authority zones, no executable code in `loom/`, no liturgical markers in authority-zone code. The checker is tested against synthetic repos. Remaining: `loom/` does not exist yet, so no real symbolic material has been migrated under the rule. |
 | GAP-009 | Local-first memory not implemented | G2 | OPEN | Add Merkle log prototype and verification command. |
 | GAP-010 | CI exists for authority spine but not full master build | G3 | PARTIAL | GitHub Actions CI exists for authority tests. Add broader workflows for lint, schemas, receipts, demos, and future runtime packages. |
 | GAP-011 | Security review absent | G4 | OPEN | Add threat model and dependency/security scan. |
 | GAP-012 | Production deployment posture undefined | G5 | OPEN | Keep production authority at NONE until deployment controls exist. |
+| GAP-013 | Canonical JSON serialization differs across portfolio repos | G3 | OPEN | Cathedral hashes `json.dumps(sort_keys=True, separators=(",",":"), ensure_ascii=False)`. zorel-kernel uses the same call with `ensure_ascii=True`. Delta-717's ledger uses default separators. On zorel's sealed authorship receipt (which contains non-ASCII text), these produce three different hashes, so Cathedral can't verify zorel receipts. Pinned by `core/authority/tests/test_golden_hashes.py`. Resolution: choose one portfolio canonical form (for example RFC 8785 JCS), and version receipt hashes so existing sealed hashes stay verifiable under their declared profile. |
 
 ---
 
