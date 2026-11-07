@@ -16,6 +16,7 @@ from pathlib import Path
 
 import pytest
 
+from core.authority.canonical import ZOREL_ASCII_V1, verify_profiled_sha256
 from core.authority.models import AuthorityEnvelope
 from core.authority.receipts import canonical_json, generate_receipt, payload_hash, sha256_json
 
@@ -102,8 +103,9 @@ def test_canonical_json_keeps_non_ascii_as_utf8():
 # Zorel hashes json.dumps(sort_keys=True, separators=(",", ":")) with the
 # default ensure_ascii=True. Cathedral's canonical_json uses ensure_ascii=False.
 # The receipt contains non-ASCII text (e.g. "≠"), so the two serializers
-# disagree. Tracked as GAP-013 in governance/open_gap_ledger.md. When a
-# portfolio-wide canonical form is chosen, update these two tests together.
+# disagree. GAP-013 resolves this with named hash profiles
+# (core/authority/canonical.py): a hash is verified under the profile it was
+# made with, and new formats use RFC 8785 JCS.
 
 
 def _zorel_body() -> dict:
@@ -115,9 +117,10 @@ def test_zorel_sealed_hash_reproduces_under_its_declared_profile():
     assert hashlib.sha256(canonical.encode("utf-8")).hexdigest() == ZOREL_SEALED_HASH
 
 
-def test_cathedral_serializer_cannot_yet_verify_zorel_receipt():
-    assert sha256_json(_zorel_body()) != ZOREL_SEALED_HASH, (
-        "Cathedral's canonical_json now reproduces Zorel's sealed hash. "
-        "If the serializers were unified on purpose, close GAP-013 and "
-        "replace this test with an equality assertion."
-    )
+def test_cathedral_verifies_zorel_receipt_under_its_declared_profile():
+    assert verify_profiled_sha256(_zorel_body(), ZOREL_SEALED_HASH, ZOREL_ASCII_V1)
+
+
+def test_legacy_receipt_serializer_still_differs_from_zorel():
+    # Receipts v1 keep weaver.c14n.v1 so existing receipt hashes stay valid.
+    assert sha256_json(_zorel_body()) != ZOREL_SEALED_HASH

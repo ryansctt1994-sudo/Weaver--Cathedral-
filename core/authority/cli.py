@@ -7,6 +7,9 @@ import json
 import sys
 from pathlib import Path
 
+from dataclasses import asdict
+
+from .chronicle import verify_file
 from .models import AuthorityEnvelope
 from .receipts import generate_receipt
 from .replay import InMemoryReplayCache
@@ -38,6 +41,12 @@ def cmd_promote(args: argparse.Namespace) -> int:
     return 0 if decision.granted else 1
 
 
+def cmd_chronicle_verify(args: argparse.Namespace) -> int:
+    result = verify_file(args.chronicle, expected_head=args.expected_head)
+    print(json.dumps(asdict(result), indent=2))
+    return 0 if result.ok else 1
+
+
 def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(prog="weaver-authority")
     sub = parser.add_subparsers(dest="command", required=True)
@@ -57,6 +66,11 @@ def build_parser() -> argparse.ArgumentParser:
     promote.add_argument("level")
     promote.add_argument("--evidence", default="")
     promote.set_defaults(func=cmd_promote)
+
+    chronicle = sub.add_parser("chronicle-verify", help="Verify a hash-chained chronicle file")
+    chronicle.add_argument("chronicle")
+    chronicle.add_argument("--expected-head", default=None, help="Head hash recorded elsewhere; detects tail truncation")
+    chronicle.set_defaults(func=cmd_chronicle_verify)
 
     return parser
 
