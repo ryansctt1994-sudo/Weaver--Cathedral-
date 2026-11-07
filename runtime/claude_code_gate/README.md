@@ -26,7 +26,7 @@ The roles follow SKILL_SPEC's agent binding.
 | Researcher, Sentinel | Read tools; read-only Bash |
 | Builder | Read tools; read-only Bash; Edit, Write, MultiEdit and NotebookEdit inside the project; delegate |
 | Verifier | Read tools; read-only Bash; `pytest` and `python -m pytest` (without plugin or config flags) |
-| Operator | None. The human-authorized override path is not implemented. |
+| Operator | None. People approve single denied calls through signed operator overrides (see below), not through a role. |
 
 Anything else is denied: no role, an unknown role, a subagent with no `agent_type`, unknown tools, MCP tools, and malformed input.
 
@@ -44,13 +44,24 @@ Subagent definitions (`.claude/agents/*.md`) whose `name` is a role name get tha
 
 **The Verifier role runs repository code.** Test code can write anything, so for Verifier the Bash rules do not limit what runs. Only operating-system permissions can. Grant the Verifier role only where that is acceptable.
 
+## Operator override (G3)
+
+When the policy denies a call, the denial ends with `request <sha256>`. An operator who approves that one call signs it:
+
+```bash
+python -m runtime.claude_code_gate.operator sign --private <key> --request <sha256> \
+    --operator <id> --reason "<why>" --minutes 10 --out <project>/.weaver/gate/overrides/<sha256>.json
+```
+
+The same call then goes through once. The override is an Ed25519 signature checked against the key pinned in `WEAVER_GATE_OPERATOR_PUBKEY`. It is bound to that exact request (tool, input, role, ceiling, agent id), expires within 15 minutes, and can be used once. The gate's own protected paths cannot be overridden. The agent cannot issue one, because it has no access to the private key, and a forged or edited file fails the signature check. Every use and every rejected attempt is chronicled. Details are in [`OVERRIDE.md`](OVERRIDE.md).
+
 ## Installing it (candidate)
 
 A person adds this to `.claude/settings.json` and commits it. The agent cannot change that file through the gate.
 
 ```json
 {
-  "env": { "WEAVER_GATE_ROLE": "Builder" },
+  "env": { "WEAVER_GATE_ROLE": "Builder", "WEAVER_GATE_OPERATOR_PUBKEY": "<operator public key, hex>" },
   "hooks": {
     "PreToolUse": [
       {
@@ -87,6 +98,6 @@ Not verified: subagent behaviour end to end in this version, and any other Claud
 ## Limits
 
 - **Advisory, not a sandbox.** See the top of this file.
-- **No keys and no override path.** The hook holds no signing key.
+- **Operator overrides are signed, not shared-key.** The hook holds only the operator's public key, and the private key must stay where the agent's user cannot read it. See [`OVERRIDE.md`](OVERRIDE.md) for the design, the flow and the deployment requirements.
 - **One host, one project.** The chronicle is a local file serialized by a lock. It has no signed head and no multi-host storage.
 - **Not independently validated.** GAP-003 stays OPEN until it is.

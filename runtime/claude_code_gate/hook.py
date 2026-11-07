@@ -11,6 +11,13 @@ role, and the policy caps it at the ceiling, so delegation can only narrow
 permissions. A subagent that has an agent_id but no agent_type gets no role and
 is denied. With no ceiling set, every call is denied.
 
+Operator override (G3). When the policy denies a call, the hook looks for
+<project>/.weaver/gate/overrides/<request_sha256>.json. It lets the call
+through only if that file is signed with the operator's Ed25519 key, pinned in
+WEAVER_GATE_OPERATOR_PUBKEY, is bound to this exact request, has not expired,
+and has not been used. See override.py. Every denial prints the request hash,
+which is what an operator signs.
+
 Audit. Every decision, allowed or blocked, is appended to the chronicle at
 <project>/.weaver/gate/chronicle.jsonl. Each entry records the policy version,
 role, tool, rule and target. A blocked entry also carries a structured
@@ -30,7 +37,9 @@ from pathlib import Path
 from typing import Any, Mapping, TextIO
 
 from core.authority.chronicle import Chronicle
-from core.authority.gate import UncertaintyGate
+from core.authority.gate import UncertaintyGate, request_hash
+from core.authority.replay import SqliteReplayStore
+from runtime.claude_code_gate import override as operator_override
 from runtime.claude_code_gate.policy import POLICY_VERSION, decide, effective_permissions
 
 THRESHOLD = 0.7
@@ -110,22 +119,46 @@ def run_hook(stdin: TextIO, stderr: TextIO, env: Mapping[str, str], now: datetim
             "target": decision.target,
         }
 
+    request = {"tool": tool_name, "input": tool_input, "role": role, "ceiling": ceiling, "agent_id": payload.get("agent_id")}
+    try:
+        req_sha = request_hash(request)
+    except Exception:  # noqa: BLE001 - the gate vetoes an unhashable request below
+        req_sha = None
+    context["request_sha256"] = req_sha
+    when = now or datetime.now(timezone.utc)
+
     state = root / STATE_DIR
     state.mkdir(parents=True, exist_ok=True)
+    overridden = False
+    override_problem = None
     with open(state / "lock", "a") as lock:
         acquire_lock(lock, lock_timeout(env))
+        if not decision.allowed and req_sha is not None:
+            doc, load_problem = operator_override.load_override(state, req_sha)
+            if doc is not None or load_problem is not None:
+                override_problem = load_problem or operator_override.check(
+                    doc,
+                    request_sha256=req_sha,
+                    public_key_hex=operator_override.pinned_public_key(env),
+                    rule=decision.rule,
+                    now=when,
+                    replay_store=SqliteReplayStore(state / "override_nonces.sqlite"),
+                )
+                if override_problem is None:
+                    overridden = True
+                    context["override"] = {**operator_override.audit_record(doc), "overridden_rule": decision.rule}
+                    context.pop("denial", None)
+                else:
+                    context["override_rejected"] = override_problem
         gate = UncertaintyGate(threshold=THRESHOLD, chronicle=Chronicle(state / "chronicle.jsonl"))
-        record = gate.evaluate(
-            {"tool": tool_name, "input": tool_input, "role": role, "ceiling": ceiling, "agent_id": payload.get("agent_id")},
-            0.0 if decision.allowed else 1.0,
-            now=now or datetime.now(timezone.utc),
-            context=context,
-        )
+        record = gate.evaluate(request, 0.0 if (decision.allowed or overridden) else 1.0, now=when, context=context)
 
     if record.allowed:
         return 0
+    extra = f"; operator override rejected: {override_problem}" if override_problem else ""
     print(
-        f"Blocked by Weaver gate (role {role}, ceiling {ceiling}, rule {decision.rule}, {record.reason}): {decision.reason}",
+        f"Blocked by Weaver gate (role {role}, ceiling {ceiling}, rule {decision.rule}, {record.reason}): "
+        f"{decision.reason}{extra}. request {req_sha}",
         file=stderr,
     )
     return 2

@@ -258,7 +258,9 @@ def test_allowed_call_exits_zero_and_is_chronicled(project):
     assert result.returncode == 0, result.stderr
     [entry] = chronicle_entries(project)
     assert entry["data"]["decision"] == "ALLOW"
-    assert entry["data"]["context"] == {
+    context = dict(entry["data"]["context"])
+    assert len(context.pop("request_sha256")) == 64
+    assert context == {
         "policy_version": POLICY_VERSION,
         "role": "Planner",
         "ceiling": "Planner",
