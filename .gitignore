@@ -5,3 +5,6 @@ __pycache__/
 build/
 dist/
 .pytest_cache/
+
+# Evidence bundles are built by CI and uploaded as artifacts, not committed
+forge/demos/authority_spine_001/bundle/

@@ -3,7 +3,7 @@
 **Folder:** `forge/`
 **Purpose:** Demonstration-as-evidence packages, and later receipts, benchmarks and failure exports.
 **Authority Level:** `CANDIDATE_SPINE`
-**Evidence:** `demos/authority_spine_001` is an E1 scaffold. Its scripts run in CI, but no E3 receipt bundle exists yet (GAP-005).
+**Evidence:** `demos/authority_spine_001` is an E1 scaffold. Its scripts run in CI, and CI builds, verifies and replays its evidence bundle. No promotion decision has been made on that bundle (GAP-005).
 
 **Allowed contents:** Demo specs, run/verify scripts, synthetic inputs, generated logs and receipts once they are packaged as a bundle.
 
