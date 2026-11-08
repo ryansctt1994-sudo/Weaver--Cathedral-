@@ -18,14 +18,16 @@ decision to a hash-chained Chronicle.
 1. **Protected paths.** A call that reaches the gate's own config, its state
    directory, its override key, any extra `protected_paths`, or a Claude Code
    `settings.json` / `settings.local.json` gets uncertainty 1.0. This covers path
-   fields (resolved through symlinks) and any string in the tool input.
+   fields (resolved through symlinks) and any string in the tool input. This
+   veto is final: no operator override lifts it.
 2. **Rules,** in order. The first rule whose `tool` regex matches the tool name,
    and whose optional `path_glob` and `input_regex` match the input, sets the
    uncertainty.
 3. **Default.** No match gets `default_uncertainty`, which must be at least the
    threshold, so unknown tools are vetoed.
 4. **Gate.** Uncertainty below `threshold` passes. At or above it, the call is
-   vetoed unless an operator has signed an override for that exact call.
+   vetoed unless an operator has signed an override for that exact call. A
+   protected-path veto (step 1) is the exception: it is never overridable.
 
 Each Chronicle entry records the decision, the request hash, the uncertainty,
 the threshold, and a `context` with the tool name, the rule id, the session id
@@ -78,6 +80,11 @@ The override is an HMAC over that one request hash. It expires after
 and its nonce is kept until the override could no longer be accepted anyway
 (GAP-002). An override moved to another call, an expired one, a replayed one,
 and one signed with another key are all refused.
+
+An override never lifts a protected-path veto. The gate does not pass it to
+the decision, does not spend its nonce, and records `override_refused:
+not_overridable` in the Chronicle. Change protected files outside the agent's
+session. (Before this was fixed, a valid override did lift those vetoes.)
 
 ## Checking the record
 

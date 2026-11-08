@@ -277,6 +277,97 @@ def test_with_overrides_off_no_override_is_honoured(tmp_path, capsys):
     assert sign(config, req_hash("Edit", GOV_EDIT)) == 1  # nothing to sign with
 
 
+# --- Protected-path vetoes are final ------------------------------------------------
+#
+# Before this fix a valid operator override lifted builtin:protected-path, so one
+# signed call could rewrite .claude/settings.json, the gate's config or its key.
+
+
+def _protected_calls(tmp_path: Path, config: Path) -> list[tuple[str, str, dict]]:
+    loaded = load_config(config)
+    project = tmp_path / "project"
+    (project / ".claude").mkdir(parents=True, exist_ok=True)
+    (project / "sub").mkdir(exist_ok=True)
+    (project / ".claude" / "settings.json").write_text("{}")
+    link = tmp_path / "innocent.txt"
+    if not link.is_symlink():
+        link.symlink_to(loaded.chronicle_path)
+    return [
+        ("claude_settings", "Write", {"file_path": str(project / ".claude" / "settings.json"), "content": "{}"}),
+        ("claude_settings_local", "Write", {"file_path": str(project / ".claude" / "settings.local.json"), "content": "{}"}),
+        ("claude_settings_by_traversal", "Edit", {"file_path": str(project / "sub" / ".." / ".claude" / "settings.json"),
+                                                  "old_string": "{", "new_string": "["}),
+        ("gate_config", "Edit", {"file_path": str(config), "old_string": "1.0", "new_string": "0.0"}),
+        ("gate_override_key", "Write", {"file_path": str(loaded.override_key_file), "content": "00" * 32}),
+        ("gate_chronicle", "Write", {"file_path": str(loaded.chronicle_path), "content": ""}),
+        ("state_via_symlink", "Write", {"file_path": str(link), "content": ""}),
+        ("bash_naming_the_key", "Bash", {"command": f"cat {loaded.override_key_file}"}),
+        ("bash_naming_settings", "Bash", {"command": "echo '{}' > .claude/settings.local.json"}),
+    ]
+
+
+def _spent_nonces(config: Path) -> int:
+    path = load_config(config).replay_path
+    if not path.exists():
+        return 0
+    import sqlite3
+    with sqlite3.connect(path) as db:
+        return sum(db.execute(f"SELECT COUNT(*) FROM {name}").fetchone()[0]
+                   for (name,) in db.execute("SELECT name FROM sqlite_master WHERE type='table'"))
+
+
+def test_protected_path_rule_is_terminal():
+    from runtime.claude_code_gate.policy import PROTECTED_RULE_ID, TERMINAL_RULES, Match
+    assert PROTECTED_RULE_ID in TERMINAL_RULES
+    assert Match(PROTECTED_RULE_ID, 1.0, "r").overridable is False
+    assert Match("governance-edits", 0.95, "r").overridable is True
+
+
+@pytest.mark.parametrize("case", range(9))
+def test_a_valid_override_cannot_lift_a_protected_path_veto(tmp_path, capsys, case):
+    config = make_config(tmp_path, with_key=True)
+    assert hook(config, "Read", {"file_path": "/x"}) == 0  # creates the state dir and chronicle
+    name, tool, tool_input = _protected_calls(tmp_path, config)[case]
+    assert hook(config, tool, tool_input) == 2, name
+    first = capsys.readouterr().err
+    assert "Rule builtin:protected-path" in first and "This veto is final" in first, name
+    assert "sign-override" not in first, name  # the denial does not invite an override
+
+    assert sign(config, req_hash(tool, tool_input)) == 0  # an operator signs it anyway
+    capsys.readouterr()
+    assert hook(config, tool, tool_input, now=NOW + timedelta(seconds=30)) == 2, name
+    second = capsys.readouterr().err
+    assert "This veto is final" in second and "allowed once" not in second, name
+
+    last = entries(config)[-1]["data"]
+    assert last["decision"] == "VETO" and last["override_operator"] is None, name
+    assert last["context"]["rule_id"] == "builtin:protected-path", name
+    assert last["context"]["override_refused"] == "not_overridable", name
+    assert _spent_nonces(config) == 0, name  # the refused override spent nothing
+    assert verify_file(load_config(config).chronicle_path).ok
+
+
+def test_malformed_override_material_on_a_protected_path_still_gets_the_final_veto(tmp_path, capsys):
+    config = make_config(tmp_path, with_key=True)
+    target = {"file_path": str(tmp_path / "p" / ".claude" / "settings.json"), "content": "{}"}
+    overrides = load_config(config).overrides_dir
+    overrides.mkdir(parents=True)
+    (overrides / f"{req_hash('Write', target)}.json").write_text("{not json")
+    assert hook(config, "Write", target) == 2
+    assert "This veto is final" in capsys.readouterr().err
+    assert entries(config)[-1]["data"]["context"]["override_refused"] == "not_overridable"
+
+
+def test_overrides_still_lift_ordinary_vetoes(tmp_path, capsys):
+    # Control: the fix must not turn every override off.
+    config = make_config(tmp_path, with_key=True)
+    assert hook(config, "Edit", GOV_EDIT) == 2
+    assert "sign-override" in capsys.readouterr().err
+    assert sign(config, req_hash("Edit", GOV_EDIT)) == 0
+    assert hook(config, "Edit", GOV_EDIT, now=NOW + timedelta(seconds=30)) == 0
+    assert "override_refused" not in entries(config)[-1]["data"]["context"]
+
+
 # --- Processes and the shell wrapper ---------------------------------------------
 
 

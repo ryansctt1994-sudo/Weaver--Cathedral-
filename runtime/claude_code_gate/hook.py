@@ -124,7 +124,10 @@ def _veto_message(config: GateConfig, tool_name: str, match: Match, record: Gate
     ]
     if record.chronicle_index is not None:
         lines.append(f"Recorded in the gate chronicle as entry {record.chronicle_index}.")
-    if config.override_key_file is None:
+    if not match.overridable:
+        lines.append("This veto is final: an operator override cannot lift a protected-path veto. "
+                     "Change protected files outside the agent's session.")
+    elif config.override_key_file is None:
         lines.append("Overrides are not configured for this gate.")
     else:
         lines.append(
@@ -142,7 +145,9 @@ def pre_tool_use(config_path: str | Path, stdin_text: str, now: datetime) -> Hoo
     request = {"tool_name": tool_name, "tool_input": tool_input}
     req_hash = request_hash(request)
     key = read_override_key(config)
-    override = _load_override(config, req_hash) if key is not None else None
+    # A protected-path veto is final: the override is never handed to the gate,
+    # so it cannot lift the veto and its nonce is not spent.
+    override = _load_override(config, req_hash) if key is not None and match.overridable else None
     context = {
         "adapter": ADAPTER_ID,
         "tool_name": tool_name,
@@ -151,6 +156,8 @@ def pre_tool_use(config_path: str | Path, stdin_text: str, now: datetime) -> Hoo
     }
     if session_id:
         context["session_id"] = session_id
+    if not match.overridable and (config.overrides_dir / f"{req_hash}.json").exists():
+        context["override_refused"] = "not_overridable"
 
     config.state_dir.mkdir(parents=True, exist_ok=True)
     with _exclusive(config.lock_path):
