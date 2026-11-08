@@ -21,9 +21,13 @@ dev = [
 
 [project.scripts]
 weaver-authority = "core.authority.cli:main"
+weaver-claude-gate = "runtime.claude_code_gate.hook:main"
 
 [tool.setuptools.packages.find]
-include = ["core*"]
+include = ["core*", "runtime*"]
+
+[tool.setuptools.package-data]
+"runtime.claude_code_gate" = ["*.json", "README.md"]
 
 [tool.pytest.ini_options]
 testpaths = ["core/authority/tests", "tests", "skills"]

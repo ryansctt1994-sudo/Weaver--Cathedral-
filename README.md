@@ -59,7 +59,7 @@ Recommended public description:
 ```text
 Master blueprint: E1 architecture/scaffold
 Phase 1 authority kernel: E2 candidate, CI green on PR #1
-Agent runtime: pending
+Agent runtime: first adapter (Claude Code tool gate, `runtime/claude_code_gate`, GAP-003 PARTIAL); orchestrator pending
 Skill runtime: scaffold/spec only
 Independent reproduction: absent
 Production authority: none
@@ -245,6 +245,8 @@ Production authority: none
 ### 8.2 Agent Harness
 
 Borrow from Ruflo and Swarms.
+
+First piece in place: [`runtime/claude_code_gate`](runtime/claude_code_gate/README.md), a fail-closed Claude Code `PreToolUse` hook that sends every tool call through `UncertaintyGate` and chronicles the decision (GAP-003, PARTIAL). Unlike Ruflo's hooks, which always exit 0, it blocks whenever it cannot decide.
 
 Responsibilities:
 

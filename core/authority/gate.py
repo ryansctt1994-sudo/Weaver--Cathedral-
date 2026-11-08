@@ -154,10 +154,18 @@ class UncertaintyGate:
         override: Mapping[str, Any] | None = None,
         context: Mapping[str, Any] | None = None,
     ) -> GateRecord:
+        """Decide on ``request``. ``context`` is stored with the chronicled decision.
+
+        ``context`` says who asked and under which policy (for example, the tool
+        name and the policy rule that set ``uncertainty``). It does not affect the
+        decision. If it cannot be chronicled, the decision becomes a VETO.
+        """
         try:
             req_hash = request_hash(request)
         except Exception:  # noqa: BLE001 - anything unhashable is a veto
-            return self._record(GateRecord(GateDecision.VETO, "request_not_canonicalizable", "", None, self.threshold), now, context)
+            return self._record(
+                GateRecord(GateDecision.VETO, "request_not_canonicalizable", "", None, self.threshold), now, context
+            )
 
         try:
             record = self._decide(req_hash, uncertainty, now, override)
@@ -227,7 +235,7 @@ class UncertaintyGate:
     def _record(self, record: GateRecord, now: datetime, context: Mapping[str, Any] | None = None) -> GateRecord:
         if self.chronicle is None:
             return record
-        data = {
+        data: dict[str, Any] = {
             "decision": record.decision.value,
             "reason": record.reason,
             "request_hash": record.request_hash,
@@ -235,10 +243,9 @@ class UncertaintyGate:
             "threshold": self.threshold,
             "override_operator": record.override_operator,
         }
+        # Only present when a caller supplies it, so existing chronicles are unchanged.
         if context is not None:
-            # Only added when given, so entries from callers that omit it are unchanged.
-            # A context that cannot be canonicalized fails the append below, which vetoes.
-            data["context"] = context
+            data["context"] = dict(context)
         try:
             entry = self.chronicle.append("gate.decision", data, recorded_at=now)
         except Exception as exc:  # noqa: BLE001 - an unrecorded allow is not allowed
