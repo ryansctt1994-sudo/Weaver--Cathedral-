@@ -1,0 +1,70 @@
+{
+  "schema": "weaver.claude_code_gate.config.v1",
+  "description": "Example policy. Copy it outside the repository you work in, then adjust the rules. Rules are tried in order; the first match sets the uncertainty. Unmatched calls get default_uncertainty and are vetoed.",
+  "threshold": 0.5,
+  "default_uncertainty": 1.0,
+  "state_dir": "state",
+  "override_key_file": null,
+  "override_max_age_seconds": 300,
+  "protected_paths": [],
+  "rules": [
+    {
+      "id": "read-only-tools",
+      "tool": "Read|Grep|Glob|LS|NotebookRead|TodoWrite",
+      "uncertainty": 0.0,
+      "reason": "read-only or bookkeeping tool"
+    },
+    {
+      "id": "governance-edits",
+      "tool": "Write|Edit|MultiEdit|NotebookEdit",
+      "path_glob": ["*/governance/*", "*/.github/*", "*/evidence/*"],
+      "uncertainty": 0.95,
+      "reason": "edits governance, CI or evidence files"
+    },
+    {
+      "id": "other-edits",
+      "tool": "Write|Edit|MultiEdit|NotebookEdit",
+      "uncertainty": 0.2,
+      "reason": "edits a working file"
+    },
+    {
+      "id": "history-rewrite",
+      "tool": "Bash",
+      "input_regex": {"command": "git\\s+(push\\b.*(--force|\\s-f\\b)|reset\\s+--hard|filter-branch|filter-repo)"},
+      "uncertainty": 1.0,
+      "reason": "rewrites or discards git history"
+    },
+    {
+      "id": "recursive-delete",
+      "tool": "Bash",
+      "input_regex": {"command": "(?i)\\brm\\s+(-[a-z]*r[a-z]*f|-[a-z]*f[a-z]*r)\\b"},
+      "uncertainty": 1.0,
+      "reason": "recursive forced delete"
+    },
+    {
+      "id": "pipe-to-shell",
+      "tool": "Bash",
+      "input_regex": {"command": "(curl|wget)\\b[^|]*\\|\\s*(sudo\\s+)?(ba|z)?sh\\b"},
+      "uncertainty": 1.0,
+      "reason": "downloads a script and runs it"
+    },
+    {
+      "id": "other-shell",
+      "tool": "Bash",
+      "uncertainty": 0.3,
+      "reason": "shell command"
+    },
+    {
+      "id": "web-read",
+      "tool": "WebFetch|WebSearch",
+      "uncertainty": 0.3,
+      "reason": "reads from the web"
+    },
+    {
+      "id": "subagents",
+      "tool": "Task|Agent",
+      "uncertainty": 0.3,
+      "reason": "starts a subagent"
+    }
+  ]
+}
