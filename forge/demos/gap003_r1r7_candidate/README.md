@@ -33,6 +33,7 @@ The candidate lives in `runtime/claude_code_role_gate/`. `main` gained a separat
 | `regression_check.py`: B2 control, positive control | B2 DENY; eligible in-project write ALLOW once, replay DENY |
 | `mutations.py` | 13 of 13 caught by their named tests |
 | Demo, evidence bundle, claim audit | pass |
+| `live_mediation.py`: real Claude Code 2.1.319 sessions, project-level hook | 6/6 as expected: Planner write, Planner write to `.claude/settings.json`, Builder write outside, Builder Bash redirect all blocked by the gate (verdict from the chronicle and file hashes); Builder in-project write permitted; no-hook control permitted |
 
 Report hashes at the time of writing: `regression_report.json` `c91497d7…`, `mutations_report.json` `c916667a…`. The commit that contains them is the authoritative identity.
 
@@ -53,7 +54,7 @@ These need review before freeze:
 - **Root required.** The anchor must be root-owned, so the hook tests run as root. As a non-root user every hook test fails closed with `trusted_root_missing`. CI runs the suite under `sudo`. The CI changes have not been executed.
 - **G2 evidence is historical.** The G2 report was produced by the baseline policy; `test_report_was_produced_by_the_baseline_policy` pins that, and a separate test asserts the current policy differs. G2 must be re-run on the candidate. `delegation_check.py` needs an anchor before it can run against the candidate.
 - **G1 harness.** `isolation_check.py` runs a Python attempt as `nobody` using `sys.executable`. If that interpreter lives where `nobody` cannot execute it, the negative control fails as if a write went undetected. Seen with a venv in a mode-0700 directory; with an executable interpreter all G1 tests pass.
-- **Hook-level only.** The regression check runs `gate.sh` directly. Claude Code was not run and no tool was executed.
+- **Mediation tested at project level only.** `live_mediation.py` shows real Claude Code sessions route these calls through the role gate when it is installed with `--settings`. Managed settings, `disableAllHooks` and other lower-trust overrides (L-1, L-2) are not tested, so it does not show the hook cannot be bypassed.
 
 ## Reproduce
 
