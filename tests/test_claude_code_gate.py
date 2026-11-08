@@ -14,7 +14,8 @@ import pytest
 
 from core.authority.chronicle import verify_file
 from runtime.claude_code_gate.hook import resolve_role
-from runtime.claude_code_gate.policy import POLICY_VERSION, PROTECTED_PREFIXES, ROLE_PERMISSIONS, decide
+from runtime.claude_code_gate.policy import POLICY_VERSION, PROTECTED_PREFIXES, ROLE_PERMISSIONS, decide, path_identity
+from runtime.claude_code_gate.trusted_root import write_anchor
 
 REPO = Path(__file__).resolve().parents[1]
 GATE_SH = REPO / "runtime" / "claude_code_gate" / "gate.sh"
@@ -22,25 +23,37 @@ CHRONICLE = Path(".weaver") / "gate" / "chronicle.jsonl"
 ROLES = sorted(ROLE_PERMISSIONS)
 
 
+def anchor_for(project):
+    return project.parent / "anchor" / "anchor.json"
+
+
 @pytest.fixture
 def project(tmp_path):
-    (tmp_path / "src").mkdir()
-    (tmp_path / "src" / "app.py").write_text("x = 1\n")
-    (tmp_path / "tests").mkdir()
-    (tmp_path / "tests" / "test_app.py").write_text("def test_x():\n    assert True\n")
-    (tmp_path / ".claude").mkdir()
-    (tmp_path / ".claude" / "settings.json").write_text("{}\n")
-    (tmp_path / ".git").mkdir()
-    (tmp_path / ".git" / "config").write_text("[core]\n")
-    return tmp_path
+    root = tmp_path / "project"
+    root.mkdir()
+    (root / "src").mkdir()
+    (root / "src" / "app.py").write_text("x = 1\n")
+    (root / "tests").mkdir()
+    (root / "tests" / "test_app.py").write_text("def test_x():\n    assert True\n")
+    (root / ".claude").mkdir()
+    (root / ".claude" / "settings.json").write_text("{}\n")
+    (root / ".git").mkdir()
+    (root / ".git" / "config").write_text("[core]\n")
+    anchor_for(root).parent.mkdir()
+    write_anchor(anchor_for(root), root)
+    return root
 
 
 def payload(tool, tool_input, cwd=".", **extra):
     return {"hook_event_name": "PreToolUse", "tool_name": tool, "tool_input": tool_input, "cwd": cwd, **extra}
 
 
+def gate_env(project, **extra):
+    return {**os.environ, "CLAUDE_PROJECT_DIR": str(project), "WEAVER_GATE_ANCHOR": str(anchor_for(project)), **extra}
+
+
 def run_hook(project, body, role="Builder", extra_env=None):
-    env = {**os.environ, "CLAUDE_PROJECT_DIR": str(project)}
+    env = gate_env(project)
     if role is not None:
         env["WEAVER_GATE_ROLE"] = role
     else:
@@ -260,6 +273,7 @@ def test_allowed_call_exits_zero_and_is_chronicled(project):
     assert entry["data"]["decision"] == "ALLOW"
     context = dict(entry["data"]["context"])
     assert len(context.pop("request_sha256")) == 64
+    assert len(context.pop("policy_digest")) == 64
     assert context == {
         "policy_version": POLICY_VERSION,
         "role": "Planner",
@@ -269,6 +283,9 @@ def test_allowed_call_exits_zero_and_is_chronicled(project):
         "tool": "Read",
         "rule": "read_inside_project",
         "target": "src/app.py",
+        "supplied_target": "src/app.py",
+        "target_identity": path_identity(str(project / "src" / "app.py")),
+        "target_status": "resolved",
     }
     assert verify_file(project / CHRONICLE).ok
 
@@ -282,22 +299,30 @@ def test_vetoed_call_exits_two_and_writes_a_structured_denial(project):
     assert entry["data"]["decision"] == "VETO"
     denial = entry["data"]["context"]["denial"]
     assert denial == {
-        "schema": "weaver.claude_code_gate.denial.v1",
+        "schema": "weaver.claude_code_gate.denial.v2",
         "role": "Builder",
         "ceiling": "Builder",
         "agent_id": None,
         "tool": "Bash",
         "rule": "bash_not_allowlisted",
         "reason": "rm is not on the allowlist",
+        "overridable": False,
         "target": "rm",
+        "supplied_target": "rm -rf src",
+        "target_identity": None,
+        "target_status": "not_path",
     }
 
 
-def test_role_denial_is_recorded_with_its_rule(project):
+def test_role_denial_is_recorded_with_its_rule_and_its_target(project):
+    # R9: a role denial keeps the target. On the baseline it was recorded as null.
     result = run_hook(project, payload("Edit", {"file_path": "src/app.py"}, str(project)), role="Planner")
     assert result.returncode == 2
     [entry] = chronicle_entries(project)
-    assert entry["data"]["context"]["denial"]["rule"] == "role_not_permitted"
+    denial = entry["data"]["context"]["denial"]
+    assert denial["rule"] == "role_not_permitted" and denial["overridable"] is True
+    assert (denial["target"], denial["supplied_target"], denial["target_status"]) == ("src/app.py", "src/app.py", "resolved")
+    assert denial["target_identity"] == path_identity(str(project / "src" / "app.py"))
 
 
 def test_subagent_with_no_agent_type_is_denied_even_with_a_builder_environment(project):
@@ -368,13 +393,13 @@ def _wrapper(body, env):
 
 
 def test_wrapper_passes_allowed_calls_through(project):
-    env = {**os.environ, "CLAUDE_PROJECT_DIR": str(project), "WEAVER_GATE_ROLE": "Builder"}
+    env = gate_env(project, WEAVER_GATE_ROLE="Builder")
     result = _wrapper(payload("Read", {"file_path": "src/app.py"}, str(project)), env)
     assert result.returncode == 0, result.stderr
 
 
 def test_wrapper_passes_vetoes_through_as_two(project):
-    env = {**os.environ, "CLAUDE_PROJECT_DIR": str(project), "WEAVER_GATE_ROLE": "Builder"}
+    env = gate_env(project, WEAVER_GATE_ROLE="Builder")
     result = _wrapper(payload("Bash", {"command": "rm x"}, str(project)), env)
     assert result.returncode == 2 and "Blocked by Weaver gate" in result.stderr
 

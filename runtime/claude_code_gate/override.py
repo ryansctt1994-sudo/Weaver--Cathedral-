@@ -1,192 +1,192 @@
-"""GAP-003-G3: operator override, signed with a key the agent cannot use.
+"""GAP-003 G3 operator override, remediation candidate (schema v2).
 
-An override lets exactly one denied tool call through, once, before it
-expires, and only when an operator signed it. The hook holds only the
-operator's Ed25519 public key. The private key stays with the operator, off
-the agent's host or under an identity the agent cannot read. So:
+An override lets exactly one call through, once, before it expires, only when:
 
-* the agent cannot produce a valid override, even if it can write files, read
-  this code, or read the public key;
-* the override is bound to one request (the sha256 of the tool, its input,
-  role, ceiling and agent id), so it cannot be reused for another call;
-* it is single-use (its nonce is consumed in a persistent replay store) and
-  short-lived (at most 15 minutes);
-* it cannot unlock the gate's own protected paths or malformed calls;
-* every use, and every rejected attempt, is recorded in the chronicle.
+* the policy's denial is ``role_not_permitted`` (OQ-1 closed allowlist; every
+  mandatory denial was already passed before the role was consulted);
+* the document is signed with an Ed25519 key that the anchored, pinned key
+  registry lists as valid at decision time (D-3);
+* the signed context equals what the hook recomputes now: the request digest,
+  the overridden rule, the resolved target, the target's filesystem identity,
+  and the policy digest of the running enforcement manifest (R2, D-4);
+* its nonce has not been used. The nonce is claimed only after every other
+  check has passed (TX-1), by a unique-key insert (TX-2).
 
-Why not the shared-key HMAC override in core/authority/gate.py: a Claude Code
-hook runs as the same user as the agent. Any key the hook can read to verify
-an HMAC, the agent can read and use to sign one. Only an asymmetric signature
-separates "can check" from "can issue".
+The hook holds only public keys. The private key stays with the operator, off
+the agent's host or under an identity the agent cannot read.
 
-The public key comes from WEAVER_GATE_OPERATOR_PUBKEY (hex, 32 bytes), which
-.claude/settings.json sets. That file has to be protected from the agent at
-the operating-system level (G1). If the agent could change it, it could pin
-its own key.
-
-Override files live at <project>/.weaver/gate/overrides/<request_sha256>.json.
-Where they are written does not affect validity: a forged file fails the
-signature check.
+Validation (``validate``) never consumes state. Consumption (``claim``) runs
+afterwards, and the key's status is checked again after the claim (TX-3).
+Baseline-format (v1) documents are refused with ``unknown_schema``.
 """
 
 from __future__ import annotations
 
 import json
 import re
+from dataclasses import dataclass
 from datetime import datetime, timedelta, timezone
-from hashlib import sha256
 from pathlib import Path
 from typing import Any, Mapping
 
 from core.authority.canonical import JCS_RFC8785, canonicalize
-from core.authority.replay import SqliteReplayStore
+from core.authority.replay import ReplayStoreError
+from runtime.claude_code_gate import registry as key_registry
 
-OVERRIDE_SCHEMA = "weaver.claude_code_gate.override.v1"
+OVERRIDE_SCHEMA = "weaver.claude_code_gate.override.v2"
 MAX_LIFETIME = timedelta(minutes=15)
 CLOCK_SKEW = timedelta(seconds=30)
-SIGNED_FIELDS = ("schema", "request_sha256", "operator_id", "reason", "nonce", "issued_at", "expires_at", "key_fingerprint")
+SIGNED_FIELDS = (
+    "schema", "operator_id", "key_id", "reason", "nonce", "issued_at", "expires_at",
+    "policy_digest", "overridden_rule", "resolved_target", "target_identity", "request_sha256",
+)
+# Fields recomputed by the hook and compared to the signed values (C).
+CONTEXT_FIELDS = ("request_sha256", "overridden_rule", "resolved_target", "target_identity")
 
-# Denials an override can never lift. The gate's own files are edited by the
-# operator directly, not through the agent. The rest cannot be identified
-# well enough to bind an override to them.
-NON_OVERRIDABLE_RULES = frozenset({
-    "protected_path",
-    "bash_protected_path",
-    "malformed_call",
-    "unknown_role",
-    "unknown_ceiling",
-    "missing_path",
-    "missing_command",
-    "unparseable",
-})
-
-_HEX64 = re.compile(r"^[0-9a-f]{64}$")
-
-
-class OverrideError(ValueError):
-    pass
+_HEX = re.compile(r"^[0-9a-f]+$")
 
 
 def _crypto():
-    try:
-        from cryptography.exceptions import InvalidSignature
-        from cryptography.hazmat.primitives.asymmetric.ed25519 import Ed25519PrivateKey, Ed25519PublicKey
-    except ImportError:  # pragma: no cover - exercised when the package is absent
-        return None
+    from cryptography.exceptions import InvalidSignature
+    from cryptography.hazmat.primitives.asymmetric.ed25519 import Ed25519PrivateKey, Ed25519PublicKey
     return Ed25519PrivateKey, Ed25519PublicKey, InvalidSignature
 
 
-def fingerprint(public_key_hex: str) -> str:
-    return sha256(bytes.fromhex(public_key_hex)).hexdigest()
+@dataclass(frozen=True)
+class LiveContext:
+    """What the hook recomputed for this call."""
+    request_sha256: str
+    overridden_rule: str
+    resolved_target: str | None
+    target_identity: str | None
+    policy_digest: str
+
+    def signing_context(self) -> dict[str, Any]:
+        return {
+            "request_sha256": self.request_sha256,
+            "overridden_rule": self.overridden_rule,
+            "resolved_target": self.resolved_target if self.resolved_target is not None else "",
+            "target_identity": self.target_identity if self.target_identity is not None else "",
+            "policy_digest": self.policy_digest,
+        }
 
 
-def pinned_public_key(env: Mapping[str, str]) -> str | None:
-    """The operator's public key, from the environment only. None disables overrides."""
-    raw = (env.get("WEAVER_GATE_OPERATOR_PUBKEY") or "").strip().lower()
-    return raw if _HEX64.match(raw) else None
-
-
-def _message(doc: Mapping[str, Any]) -> bytes:
+def message(doc: Mapping[str, Any]) -> bytes:
     return canonicalize({k: doc[k] for k in SIGNED_FIELDS}, JCS_RFC8785).encode("utf-8")
 
 
 def _parse_time(value: Any) -> datetime:
     if not isinstance(value, str):
-        raise OverrideError("bad_timestamp")
-    try:
-        parsed = datetime.fromisoformat(value)
-    except ValueError as exc:
-        raise OverrideError("bad_timestamp") from exc
+        raise ValueError("bad_timestamp")
+    parsed = datetime.fromisoformat(value)
     if parsed.tzinfo is None:
-        raise OverrideError("bad_timestamp")
+        raise ValueError("bad_timestamp")
     return parsed
 
 
-def sign(private_key_bytes: bytes, *, request_sha256: str, operator_id: str, reason: str, nonce: str,
-         issued_at: datetime, lifetime: timedelta) -> dict[str, Any]:
-    """Operator side. Never called by the hook."""
-    crypto = _crypto()
-    if crypto is None:
-        raise OverrideError("cryptography is not installed")
-    private_cls, _, _ = crypto
+def sign(private_key_bytes: bytes, *, key_id: str, operator_id: str, reason: str, nonce: str,
+         issued_at: datetime, lifetime: timedelta, context: Mapping[str, Any]) -> dict[str, Any]:
+    """Operator side. Never called by the hook. ``context`` is a pending request's signing context."""
+    private_cls, _, _ = _crypto()
     key = private_cls.from_private_bytes(private_key_bytes)
-    public_hex = key.public_key().public_bytes_raw().hex()
     doc: dict[str, Any] = {
         "schema": OVERRIDE_SCHEMA,
-        "request_sha256": request_sha256,
         "operator_id": operator_id,
+        "key_id": key_id,
         "reason": reason,
         "nonce": nonce,
         "issued_at": issued_at.astimezone(timezone.utc).isoformat(),
         "expires_at": (issued_at + lifetime).astimezone(timezone.utc).isoformat(),
-        "key_fingerprint": fingerprint(public_hex),
+        **{k: context[k] for k in ("policy_digest", *CONTEXT_FIELDS)},
     }
-    doc["signature"] = key.sign(_message(doc)).hex()
+    doc["signature"] = key.sign(message(doc)).hex()
     return doc
 
 
-def check(doc: Any, *, request_sha256: str, public_key_hex: str | None, rule: str, now: datetime,
-          replay_store: SqliteReplayStore) -> str | None:
-    """Return None if the override is valid (and consume its nonce), else the reason it is not."""
-    if public_key_hex is None:
-        return "overrides_not_configured"
-    crypto = _crypto()
-    if crypto is None:
-        return "crypto_unavailable"
-    if rule in NON_OVERRIDABLE_RULES:
-        return "not_overridable"
-    if not isinstance(doc, Mapping) or set(doc) != set(SIGNED_FIELDS) | {"signature"}:
+def validate(doc: Any, *, live: LiveContext, keys: dict[str, key_registry.KeyEntry], now: datetime) -> str | None:
+    """Step 8. Return None if the document would authorize this call, else the reason. Consumes nothing."""
+    if not isinstance(doc, Mapping):
         return "malformed"
-    if any(not isinstance(doc[k], str) or not doc[k] for k in (*SIGNED_FIELDS, "signature")):
-        return "malformed"
-    if doc["schema"] != OVERRIDE_SCHEMA:
+    if doc.get("schema") != OVERRIDE_SCHEMA:
         return "unknown_schema"
-    if doc["request_sha256"] != request_sha256:
-        return "wrong_request"
-    if doc["key_fingerprint"] != fingerprint(public_key_hex):
-        return "unknown_key"
-
-    _, public_cls, invalid_signature = crypto
+    if set(doc) != set(SIGNED_FIELDS) | {"signature"}:
+        return "malformed"
+    if any(not isinstance(doc[k], str) for k in (*SIGNED_FIELDS, "signature")):
+        return "malformed"
+    if any(not doc[k] for k in ("operator_id", "key_id", "nonce", "issued_at", "expires_at", "policy_digest",
+                                "overridden_rule", "request_sha256", "signature")):
+        return "malformed"
     try:
-        public_cls.from_public_bytes(bytes.fromhex(public_key_hex)).verify(bytes.fromhex(doc["signature"]), _message(doc))
+        issued, expires = _parse_time(doc["issued_at"]), _parse_time(doc["expires_at"])
+    except ValueError:
+        return "bad_timestamp"
+
+    # K: key registered and valid at decision time.
+    entry = keys.get(doc["key_id"])
+    if entry is None:
+        return "unknown_key"
+    problem = key_registry.key_problem(entry, at=now, issued_at=issued)
+    if problem:
+        return problem
+
+    # S: signature under that key.
+    _, public_cls, invalid_signature = _crypto()
+    if not _HEX.match(doc["signature"]):
+        return "bad_signature"
+    try:
+        public_cls.from_public_bytes(bytes.fromhex(entry.public_key_hex)).verify(bytes.fromhex(doc["signature"]), message(doc))
     except (invalid_signature, ValueError):
         return "bad_signature"
 
-    # Timing is checked only after the signature, so an unsigned document
-    # learns nothing and spends nothing.
-    try:
-        issued, expires = _parse_time(doc["issued_at"]), _parse_time(doc["expires_at"])
-    except OverrideError as exc:
-        return str(exc)
+    # Policy digest of the running enforcement manifest.
+    if doc["policy_digest"] != live.policy_digest:
+        return "policy_digest_mismatch"
+
+    # C: signed context equals recomputed context; key bound to its operator.
+    expected = live.signing_context()
+    if any(doc[k] != expected[k] for k in CONTEXT_FIELDS) or doc["operator_id"] != entry.operator_id:
+        return "context_mismatch"
+    if live.overridden_rule != "role_not_permitted":  # defence in depth; the hook already applies OQ-1
+        return "not_overridable"
+
+    # Validity window.
     if expires - issued > MAX_LIFETIME:
         return "lifetime_too_long"
     if issued - now > CLOCK_SKEW:
         return "not_yet_valid"
     if now >= expires:
         return "expired"
-    if not replay_store.check_and_store(f"operator-override:{doc['nonce']}"):
-        return "replayed"
     return None
+
+
+def claim(doc: Mapping[str, Any], store) -> str | None:
+    """Step 9. Claim the nonce by unique-key insert. None on success."""
+    try:
+        fresh = store.check_and_store(f"operator-override:{doc['nonce']}")
+    except ReplayStoreError:
+        return "nonce_store_unavailable"
+    return None if fresh else "replayed"
+
+
+def recheck_key(doc: Mapping[str, Any], keys: dict[str, key_registry.KeyEntry], now: datetime) -> str | None:
+    """TX-3: the key's status, checked again after the claim."""
+    entry = keys.get(doc["key_id"])
+    if entry is None:
+        return "key_revoked"
+    return key_registry.key_problem(entry, at=now, issued_at=_parse_time(doc["issued_at"]))
 
 
 def load_override(state_dir: Path, request_sha256: str) -> tuple[Any, str | None]:
     """(document, problem). (None, None) when no override file exists for this request."""
     path = state_dir / "overrides" / f"{request_sha256}.json"
-    if not path.is_file():
+    if not path.exists() and not path.is_symlink():
         return None, None
     try:
         return json.loads(path.read_text(encoding="utf-8")), None
-    except (OSError, json.JSONDecodeError, UnicodeDecodeError):
+    except (OSError, ValueError, UnicodeDecodeError):
         return None, "malformed"
 
 
 def audit_record(doc: Mapping[str, Any]) -> dict[str, Any]:
-    return {
-        "schema": doc.get("schema"),
-        "operator_id": doc.get("operator_id"),
-        "reason": doc.get("reason"),
-        "nonce": doc.get("nonce"),
-        "issued_at": doc.get("issued_at"),
-        "expires_at": doc.get("expires_at"),
-        "key_fingerprint": doc.get("key_fingerprint"),
-    }
+    return {k: doc.get(k) for k in ("schema", "operator_id", "key_id", "reason", "nonce", "issued_at",
+                                    "expires_at", "policy_digest", "overridden_rule")}

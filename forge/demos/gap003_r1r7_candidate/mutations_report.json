@@ -1,0 +1,218 @@
+{
+  "all_caught": true,
+  "classification": "IMPLEMENTER_RUN (not R8)",
+  "generated_utc": "2026-11-08T03:13:47.776107+00:00",
+  "mutants": [
+    {
+      "caught": true,
+      "exit_code": 1,
+      "failed_tests": [
+        "tests/test_claude_code_gate.py::test_role_denial_is_recorded_with_its_rule_and_its_target",
+        "tests/test_claude_code_gate_override.py::test_mandatory_denials_survive_a_validly_signed_override[B4b-Agent-tool_input7-Researcher-delegation_escalation]",
+        "tests/test_claude_code_gate_override.py::test_mandatory_denials_survive_a_validly_signed_override[X1-Write-tool_input0-Planner-protected_path]",
+        "tests/test_claude_code_gate_override.py::test_mandatory_denials_survive_a_validly_signed_override[X2-Write-tool_input1-Planner-outside_project]",
+        "tests/test_claude_code_gate_override.py::test_mandatory_denials_survive_a_validly_signed_override[X3-Write-tool_input2-Planner-protected_path]",
+        "tests/test_claude_code_gate_override.py::test_override_use_and_rejection_are_chronicled_with_targets",
+        "tests/test_claude_code_gate_override.py::test_target_identity_binds_the_file_not_just_its_name"
+      ],
+      "id": "M-P",
+      "required_detections": {
+        "[X1-": true,
+        "[X2-": true,
+        "[X3-": true
+      },
+      "what": "restore role-first ordering (the baseline defect)"
+    },
+    {
+      "caught": true,
+      "exit_code": 1,
+      "failed_tests": [
+        "tests/test_claude_code_gate.py::test_vetoed_call_exits_two_and_writes_a_structured_denial",
+        "tests/test_claude_code_gate_override.py::test_every_other_denial_including_future_ones_is_non_overridable",
+        "tests/test_claude_code_gate_override.py::test_mandatory_denials_survive_a_validly_signed_override[B2-Write-tool_input4-Builder-outside_project]",
+        "tests/test_claude_code_gate_override.py::test_mandatory_denials_survive_a_validly_signed_override[B3-Bash-tool_input5-Planner-bash_not_allowlisted]",
+        "tests/test_claude_code_gate_override.py::test_mandatory_denials_survive_a_validly_signed_override[B4-Agent-tool_input6-Planner-delegation_escalation]",
+        "tests/test_claude_code_gate_override.py::test_mandatory_denials_survive_a_validly_signed_override[B4b-Agent-tool_input7-Researcher-delegation_escalation]",
+        "tests/test_claude_code_gate_override.py::test_mandatory_denials_survive_a_validly_signed_override[X2-Write-tool_input1-Planner-outside_project]"
+      ],
+      "id": "M-E",
+      "required_detections": {
+        "[B2-": true,
+        "[B3-": true,
+        "[B4-": true,
+        "test_every_other_denial_including_future_ones_is_non_overridable": true
+      },
+      "what": "restore a denylist instead of the OQ-1 allowlist (policy property and override defence)"
+    },
+    {
+      "caught": true,
+      "exit_code": 1,
+      "failed_tests": [
+        "tests/test_claude_code_gate_override.py::test_a_key_the_registry_does_not_list_is_rejected",
+        "tests/test_claude_code_gate_override.py::test_editing_any_signed_field_breaks_the_signature[expires_at]",
+        "tests/test_claude_code_gate_override.py::test_editing_any_signed_field_breaks_the_signature[nonce]",
+        "tests/test_claude_code_gate_override.py::test_editing_any_signed_field_breaks_the_signature[operator_id]",
+        "tests/test_claude_code_gate_override.py::test_editing_any_signed_field_breaks_the_signature[reason]"
+      ],
+      "id": "M-S",
+      "required_detections": {
+        "test_a_key_the_registry_does_not_list_is_rejected": true,
+        "test_editing_any_signed_field_breaks_the_signature": true
+      },
+      "what": "remove the signature check"
+    },
+    {
+      "caught": true,
+      "exit_code": 1,
+      "failed_tests": [
+        "tests/test_claude_code_gate_override.py::test_a1_eligible_role_denial_is_lifted_exactly_once",
+        "tests/test_claude_code_gate_override.py::test_c1_racing_processes_get_exactly_one_allow",
+        "tests/test_claude_code_gate_override.py::test_c2_chronicle_failure_after_claim_denies_and_the_nonce_stays_spent",
+        "tests/test_claude_code_gate_override.py::test_c3_locked_nonce_store_denies_within_a_bounded_wait",
+        "tests/test_claude_code_gate_override.py::test_k4_revocation_between_validation_and_claim_is_honoured_and_the_nonce_stays_spent",
+        "tests/test_claude_code_gate_override.py::test_override_use_and_rejection_are_chronicled_with_targets"
+      ],
+      "id": "M-N",
+      "required_detections": {
+        "test_a1_eligible_role_denial_is_lifted_exactly_once": true,
+        "test_c1_racing_processes_get_exactly_one_allow": true
+      },
+      "what": "do not consume the nonce"
+    },
+    {
+      "caught": true,
+      "exit_code": 1,
+      "failed_tests": [
+        "tests/test_claude_code_gate_override.py::test_a5_a_failed_check_leaves_the_nonce_unspent",
+        "tests/test_claude_code_gate_override.py::test_a_key_the_registry_does_not_list_is_rejected",
+        "tests/test_claude_code_gate_override.py::test_k4_revocation_between_validation_and_claim_is_honoured_and_the_nonce_stays_spent"
+      ],
+      "id": "M-A",
+      "required_detections": {
+        "test_a5_a_failed_check_leaves_the_nonce_unspent": true
+      },
+      "what": "claim the nonce before step 8 validation"
+    },
+    {
+      "caught": true,
+      "exit_code": 1,
+      "failed_tests": [
+        "tests/test_claude_code_gate_override.py::test_k1_revoked_key",
+        "tests/test_claude_code_gate_override.py::test_k2_signature_made_before_revocation_is_unusable_after_it",
+        "tests/test_claude_code_gate_override.py::test_k3_key_validity_window[window0-key_not_yet_valid]",
+        "tests/test_claude_code_gate_override.py::test_k3_key_validity_window[window1-key_expired]",
+        "tests/test_claude_code_gate_override.py::test_k4_revocation_between_validation_and_claim_is_honoured_and_the_nonce_stays_spent"
+      ],
+      "id": "M-K",
+      "required_detections": {
+        "test_k1_revoked_key": true,
+        "test_k2_": true,
+        "test_k3_": true,
+        "test_k4_": true
+      },
+      "what": "skip key status checks"
+    },
+    {
+      "caught": true,
+      "exit_code": 1,
+      "failed_tests": [
+        "tests/test_claude_code_gate_override.py::test_c2_chronicle_failure_after_claim_denies_and_the_nonce_stays_spent"
+      ],
+      "id": "M-C",
+      "required_detections": {
+        "test_c2_chronicle_failure_after_claim_denies_and_the_nonce_stays_spent": true
+      },
+      "what": "treat a Chronicle write failure as ALLOW"
+    },
+    {
+      "caught": true,
+      "exit_code": 1,
+      "failed_tests": [
+        "tests/test_claude_code_gate_override.py::test_t1_no_anchor_denies_even_with_a_cwd",
+        "tests/test_claude_code_gate_override.py::test_t2_project_dir_that_conflicts_with_the_anchor_is_denied",
+        "tests/test_claude_code_gate_override.py::test_t2_root_replaced_at_the_same_path_is_a_mismatch",
+        "tests/test_claude_code_gate_override.py::test_t3_untrusted_or_unreadable_anchor_is_denied[group_writable]",
+        "tests/test_claude_code_gate_override.py::test_t3_untrusted_or_unreadable_anchor_is_denied[malformed]",
+        "tests/test_claude_code_gate_override.py::test_t3_untrusted_or_unreadable_anchor_is_denied[not_root_owned]",
+        "tests/test_claude_code_gate_override.py::test_t3_untrusted_or_unreadable_anchor_is_denied[symlink]"
+      ],
+      "id": "M-R9",
+      "required_detections": {
+        "test_t1_no_anchor_denies_even_with_a_cwd": true,
+        "test_t2_project_dir_that_conflicts_with_the_anchor_is_denied": true
+      },
+      "what": "read the root from CLAUDE_PROJECT_DIR or the event cwd (baseline)"
+    },
+    {
+      "caught": true,
+      "exit_code": 1,
+      "failed_tests": [
+        "tests/test_claude_code_gate_override.py::test_a4_unsolicited_override_is_denied_and_does_not_spend_the_nonce",
+        "tests/test_claude_code_gate_override.py::test_u1_malformed_material_is_denied_whether_or_not_the_role_permits"
+      ],
+      "id": "M-U",
+      "required_detections": {
+        "test_a4_unsolicited_override_is_denied_and_does_not_spend_the_nonce": true,
+        "test_u1_malformed_material_is_denied": true
+      },
+      "what": "ignore unsolicited override material"
+    },
+    {
+      "caught": true,
+      "exit_code": 1,
+      "failed_tests": [
+        "tests/test_claude_code_gate_override.py::test_every_repository_module_the_hook_imports_is_in_the_manifest"
+      ],
+      "id": "M-D2",
+      "required_detections": {
+        "test_every_repository_module_the_hook_imports_is_in_the_manifest": true
+      },
+      "what": "exclude one manifest component from the digest"
+    },
+    {
+      "caught": true,
+      "exit_code": 1,
+      "failed_tests": [
+        "tests/test_claude_code_gate_override.py::test_signed_context_must_equal_the_recomputed_context[M4-change3-context_mismatch]",
+        "tests/test_claude_code_gate_override.py::test_target_identity_binds_the_file_not_just_its_name"
+      ],
+      "id": "M-I",
+      "required_detections": {
+        "[M4-": true,
+        "test_target_identity_binds_the_file_not_just_its_name": true
+      },
+      "what": "drop target_identity from the signed and compared fields"
+    },
+    {
+      "caught": true,
+      "exit_code": 1,
+      "failed_tests": [
+        "tests/test_claude_code_gate_override.py::test_signed_context_must_equal_the_recomputed_context[M1-change0-context_mismatch]"
+      ],
+      "id": "M-R",
+      "required_detections": {
+        "[M1-": true
+      },
+      "what": "drop overridden_rule from the signed and compared fields"
+    },
+    {
+      "caught": true,
+      "exit_code": 2,
+      "id": "M-D",
+      "summary": "1 error in 0.26s",
+      "what": "cryptography unavailable"
+    }
+  ],
+  "python": "3.13.18",
+  "schema": "weaver.gap003.mutation_report.v1",
+  "source_sha256": {
+    "runtime/claude_code_gate/hook.py": "ac1d91fc58a0cf960fc04649ca85e74ce4d6091f160e60f5a42eaf4de6ac5092",
+    "runtime/claude_code_gate/manifest.py": "c084b2ae281aa529d327a3577a3aec32400d6be342369cac2714d1b5a833b5a1",
+    "runtime/claude_code_gate/override.py": "72f1fa34b5921d82d75d0b01fcf17f0fc3e9aa618795f84ecd0156e299e076d8",
+    "runtime/claude_code_gate/policy.py": "8499e62cf3befe3617a6f38becb560afac0930209e9d63720941fcceca8ed7a2",
+    "runtime/claude_code_gate/registry.py": "b901eddff4b0bcd3093eeac03f7706cd9aa3c54b2c9feb7e3fa56056d987beba",
+    "tests/test_claude_code_gate.py": "786a03240fdaf9f758bfc65d947318a547a988ebd2c77a235b1b0b79938bb805",
+    "tests/test_claude_code_gate_override.py": "36e44c414527c33a39ee9a261fc25c2cd77a5ae08e9a273723dc4bfffcbbbd20"
+  },
+  "unmutated_copy_passed": true
+}

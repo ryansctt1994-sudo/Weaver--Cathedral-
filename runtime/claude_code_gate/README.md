@@ -46,22 +46,23 @@ Subagent definitions (`.claude/agents/*.md`) whose `name` is a role name get tha
 
 ## Operator override (G3)
 
-When the policy denies a call, the denial ends with `request <sha256>`. An operator who approves that one call signs it:
+Only a `role_not_permitted` denial can be lifted, and only after every mandatory check (paths, protected prefixes, symlinks, Bash rules, delegation escalation) has already passed. When the hook issues that denial it writes `.weaver/gate/pending/<request_sha256>.json`. An operator who approves that one call signs it:
 
 ```bash
-python -m runtime.claude_code_gate.operator sign --private <key> --request <sha256> \
-    --operator <id> --reason "<why>" --minutes 10 --out <project>/.weaver/gate/overrides/<sha256>.json
+python -m runtime.claude_code_gate.operator sign --private <key> --key-id <key_id> --operator <id> \
+    --pending <project>/.weaver/gate/pending/<sha256>.json --reason "<why>" --minutes 10 \
+    --out <project>/.weaver/gate/overrides/<sha256>.json
 ```
 
-The same call then goes through once. The override is an Ed25519 signature checked against the key pinned in `WEAVER_GATE_OPERATOR_PUBKEY`. It is bound to that exact request (tool, input, role, ceiling, agent id), expires within 15 minutes, and can be used once. The gate's own protected paths cannot be overridden. The agent cannot issue one, because it has no access to the private key, and a forged or edited file fails the signature check. Every use and every rejected attempt is chronicled. Details are in [`OVERRIDE.md`](OVERRIDE.md).
+The same call then goes through once. The signature must come from a key in the anchored, pinned key registry, and it binds the request, the overridden rule, the resolved target, the target's filesystem identity and the policy digest. Mandatory denials, including protected paths and paths outside the project, cannot be lifted. (On the baseline `300bd32` they could; see the retraction in [`OVERRIDE.md`](OVERRIDE.md).) Every use and every rejected attempt is chronicled.
 
 ## Installing it (candidate)
 
-A person adds this to `.claude/settings.json` and commits it. The agent cannot change that file through the gate.
+A person adds this to `.claude/settings.json` (or managed settings) and commits it. The agent cannot change that file through the gate. An administrator also writes a root-owned anchor at `/etc/weaver-gate/anchor.json` naming the project root, its `(st_dev, st_ino)` and the pinned key registry; `trusted_root.write_anchor` produces one. Without an anchor every call is denied (`trusted_root_missing`).
 
 ```json
 {
-  "env": { "WEAVER_GATE_ROLE": "Builder", "WEAVER_GATE_OPERATOR_PUBKEY": "<operator public key, hex>" },
+  "env": { "WEAVER_GATE_ROLE": "Builder" },
   "hooks": {
     "PreToolUse": [
       {
@@ -98,6 +99,6 @@ Not verified: subagent behaviour end to end in this version, and any other Claud
 ## Limits
 
 - **Advisory, not a sandbox.** See the top of this file.
-- **Operator overrides are signed, not shared-key.** The hook holds only the operator's public key, and the private key must stay where the agent's user cannot read it. See [`OVERRIDE.md`](OVERRIDE.md) for the design, the flow and the deployment requirements.
+- **Operator overrides are signed, not shared-key.** The hook holds only public keys from the pinned registry, and each private key must stay where the agent's user cannot read it. See [`OVERRIDE.md`](OVERRIDE.md) for the design, the flow and the deployment requirements.
 - **One host, one project.** The chronicle is a local file serialized by a lock. It has no signed head and no multi-host storage.
 - **Not independently validated.** GAP-003 stays OPEN until it is.

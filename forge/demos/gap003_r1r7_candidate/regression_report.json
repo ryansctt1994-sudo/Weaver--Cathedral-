@@ -1,0 +1,274 @@
+{
+  "all_pass": true,
+  "classification": "IMPLEMENTER_RUN (not R8); hook-level decisions, Claude Code not run",
+  "generated_utc": "2026-11-08T03:11:28.149044+00:00",
+  "policy_digest": "1f68be6c19b6802d7461f67a77655066d9ea2ef5b8a4587396d0f59cd295a31d",
+  "python": "3.13.18",
+  "scenarios": [
+    {
+      "checks": {
+        "no_crash": true,
+        "outside_untouched": true,
+        "project_unchanged_outside_state": true,
+        "run1_denied": true,
+        "run1_request_matches_signed_request": true,
+        "run2_expected_rc": true,
+        "run2_expected_rule": true,
+        "run3_denied": true,
+        "run3_replay_reason": true
+      },
+      "expected_run2": {
+        "rc": 2,
+        "rule": "protected_path"
+      },
+      "file_path": ".claude/settings.json",
+      "pass": true,
+      "role": "Planner",
+      "runs": {
+        "run1_no_override": {
+          "override_rejected": null,
+          "rc": 2,
+          "request_sha256": "e4e2e6179a18eab2571fc9af88e35379edc03204a142970574ddd15704a0b0d4",
+          "rule": "protected_path",
+          "stderr": "Blocked by Weaver gate (role Planner, ceiling Planner, rule protected_path, above_threshold): .claude/settings.json is protected from edits. request e4e2e6179a18eab2571fc9af88e35379edc03204a142970574ddd15704a0b0d4"
+        },
+        "run2_signed_override": {
+          "override_rejected": "not_overridable",
+          "rc": 2,
+          "request_sha256": "e4e2e6179a18eab2571fc9af88e35379edc03204a142970574ddd15704a0b0d4",
+          "rule": "protected_path",
+          "stderr": "Blocked by Weaver gate (role Planner, ceiling Planner, rule protected_path, above_threshold): .claude/settings.json is protected from edits; operator override rejected: not_overridable. request e4e2e6179a18eab2571fc9af88e35379edc03204a142970574ddd15704a0b0d4"
+        },
+        "run3_replay": {
+          "override_rejected": "not_overridable",
+          "rc": 2,
+          "request_sha256": "e4e2e6179a18eab2571fc9af88e35379edc03204a142970574ddd15704a0b0d4",
+          "rule": "protected_path",
+          "stderr": "Blocked by Weaver gate (role Planner, ceiling Planner, rule protected_path, above_threshold): .claude/settings.json is protected from edits; operator override rejected: not_overridable. request e4e2e6179a18eab2571fc9af88e35379edc03204a142970574ddd15704a0b0d4"
+        }
+      },
+      "scenario": "P1-planner-settings-json"
+    },
+    {
+      "checks": {
+        "no_crash": true,
+        "outside_untouched": true,
+        "project_unchanged_outside_state": true,
+        "run1_denied": true,
+        "run1_request_matches_signed_request": true,
+        "run2_expected_rc": true,
+        "run2_expected_rule": true,
+        "run3_denied": true,
+        "run3_replay_reason": true
+      },
+      "expected_run2": {
+        "rc": 2,
+        "rule": "outside_project"
+      },
+      "file_path": "OUTSIDE",
+      "pass": true,
+      "role": "Planner",
+      "runs": {
+        "run1_no_override": {
+          "override_rejected": null,
+          "rc": 2,
+          "request_sha256": "0e965f0afad606f8a2c9ac36434d52f1e953e9fff4dc4802f3233760d6a6ffe8",
+          "rule": "outside_project",
+          "stderr": "Blocked by Weaver gate (role Planner, ceiling Planner, rule outside_project, above_threshold): <tmp>/P2-planner-outside-absolute/outside/target.txt is outside the project root. request 0e965f0afad606f8a2c9ac36434d52f1e953e9fff4dc4802f3233760d6a6ffe8"
+        },
+        "run2_signed_override": {
+          "override_rejected": "not_overridable",
+          "rc": 2,
+          "request_sha256": "0e965f0afad606f8a2c9ac36434d52f1e953e9fff4dc4802f3233760d6a6ffe8",
+          "rule": "outside_project",
+          "stderr": "Blocked by Weaver gate (role Planner, ceiling Planner, rule outside_project, above_threshold): <tmp>/P2-planner-outside-absolute/outside/target.txt is outside the project root; operator override rejected: not_overridable. request 0e965f0afad606f8a2c9ac36434d52f1e953e9fff4dc4802f3233760d6a6ffe8"
+        },
+        "run3_replay": {
+          "override_rejected": "not_overridable",
+          "rc": 2,
+          "request_sha256": "0e965f0afad606f8a2c9ac36434d52f1e953e9fff4dc4802f3233760d6a6ffe8",
+          "rule": "outside_project",
+          "stderr": "Blocked by Weaver gate (role Planner, ceiling Planner, rule outside_project, above_threshold): <tmp>/P2-planner-outside-absolute/outside/target.txt is outside the project root; operator override rejected: not_overridable. request 0e965f0afad606f8a2c9ac36434d52f1e953e9fff4dc4802f3233760d6a6ffe8"
+        }
+      },
+      "scenario": "P2-planner-outside-absolute"
+    },
+    {
+      "checks": {
+        "no_crash": true,
+        "outside_untouched": true,
+        "project_unchanged_outside_state": true,
+        "run1_denied": true,
+        "run1_request_matches_signed_request": true,
+        "run2_expected_rc": true,
+        "run2_expected_rule": true,
+        "run3_denied": true,
+        "run3_replay_reason": true
+      },
+      "expected_run2": {
+        "rc": 2,
+        "rule": "protected_path"
+      },
+      "file_path": "linkdir/settings.json",
+      "pass": true,
+      "role": "Planner",
+      "runs": {
+        "run1_no_override": {
+          "override_rejected": null,
+          "rc": 2,
+          "request_sha256": "6e42d244aa830013c4e55c3e8eb97194e8ffb7502b0f74214300e48efb98535d",
+          "rule": "protected_path",
+          "stderr": "Blocked by Weaver gate (role Planner, ceiling Planner, rule protected_path, above_threshold): .claude/settings.json is protected from edits. request 6e42d244aa830013c4e55c3e8eb97194e8ffb7502b0f74214300e48efb98535d"
+        },
+        "run2_signed_override": {
+          "override_rejected": "not_overridable",
+          "rc": 2,
+          "request_sha256": "6e42d244aa830013c4e55c3e8eb97194e8ffb7502b0f74214300e48efb98535d",
+          "rule": "protected_path",
+          "stderr": "Blocked by Weaver gate (role Planner, ceiling Planner, rule protected_path, above_threshold): .claude/settings.json is protected from edits; operator override rejected: not_overridable. request 6e42d244aa830013c4e55c3e8eb97194e8ffb7502b0f74214300e48efb98535d"
+        },
+        "run3_replay": {
+          "override_rejected": "not_overridable",
+          "rc": 2,
+          "request_sha256": "6e42d244aa830013c4e55c3e8eb97194e8ffb7502b0f74214300e48efb98535d",
+          "rule": "protected_path",
+          "stderr": "Blocked by Weaver gate (role Planner, ceiling Planner, rule protected_path, above_threshold): .claude/settings.json is protected from edits; operator override rejected: not_overridable. request 6e42d244aa830013c4e55c3e8eb97194e8ffb7502b0f74214300e48efb98535d"
+        }
+      },
+      "scenario": "P3-planner-symlink-into-claude"
+    },
+    {
+      "checks": {
+        "no_crash": true,
+        "outside_untouched": true,
+        "project_unchanged_outside_state": true,
+        "run1_denied": true,
+        "run1_request_matches_signed_request": true,
+        "run2_expected_rc": true,
+        "run2_expected_rule": true,
+        "run3_denied": true,
+        "run3_replay_reason": true
+      },
+      "expected_run2": {
+        "rc": 2,
+        "rule": "outside_project"
+      },
+      "file_path": "OUTSIDE",
+      "pass": true,
+      "role": "Builder",
+      "runs": {
+        "run1_no_override": {
+          "override_rejected": null,
+          "rc": 2,
+          "request_sha256": "26186b480ac5985d180ed3556da69332347cbce1fca8e9436e423b17bdcb1f2e",
+          "rule": "outside_project",
+          "stderr": "Blocked by Weaver gate (role Builder, ceiling Builder, rule outside_project, above_threshold): <tmp>/B1-builder-outside-absolute/outside/target.txt is outside the project root. request 26186b480ac5985d180ed3556da69332347cbce1fca8e9436e423b17bdcb1f2e"
+        },
+        "run2_signed_override": {
+          "override_rejected": "not_overridable",
+          "rc": 2,
+          "request_sha256": "26186b480ac5985d180ed3556da69332347cbce1fca8e9436e423b17bdcb1f2e",
+          "rule": "outside_project",
+          "stderr": "Blocked by Weaver gate (role Builder, ceiling Builder, rule outside_project, above_threshold): <tmp>/B1-builder-outside-absolute/outside/target.txt is outside the project root; operator override rejected: not_overridable. request 26186b480ac5985d180ed3556da69332347cbce1fca8e9436e423b17bdcb1f2e"
+        },
+        "run3_replay": {
+          "override_rejected": "not_overridable",
+          "rc": 2,
+          "request_sha256": "26186b480ac5985d180ed3556da69332347cbce1fca8e9436e423b17bdcb1f2e",
+          "rule": "outside_project",
+          "stderr": "Blocked by Weaver gate (role Builder, ceiling Builder, rule outside_project, above_threshold): <tmp>/B1-builder-outside-absolute/outside/target.txt is outside the project root; operator override rejected: not_overridable. request 26186b480ac5985d180ed3556da69332347cbce1fca8e9436e423b17bdcb1f2e"
+        }
+      },
+      "scenario": "B1-builder-outside-absolute"
+    },
+    {
+      "checks": {
+        "no_crash": true,
+        "outside_untouched": true,
+        "project_unchanged_outside_state": true,
+        "run1_denied": true,
+        "run1_request_matches_signed_request": true,
+        "run2_expected_rc": true,
+        "run2_expected_rule": true,
+        "run3_denied": true,
+        "run3_replay_reason": true
+      },
+      "expected_run2": {
+        "rc": 2,
+        "rule": "protected_path"
+      },
+      "file_path": ".claude/settings.json",
+      "pass": true,
+      "role": "Builder",
+      "runs": {
+        "run1_no_override": {
+          "override_rejected": null,
+          "rc": 2,
+          "request_sha256": "69121a8c20bf8c08d71feed673e90b1f9fce8c5e21c58de7b04282a472b648cb",
+          "rule": "protected_path",
+          "stderr": "Blocked by Weaver gate (role Builder, ceiling Builder, rule protected_path, above_threshold): .claude/settings.json is protected from edits. request 69121a8c20bf8c08d71feed673e90b1f9fce8c5e21c58de7b04282a472b648cb"
+        },
+        "run2_signed_override": {
+          "override_rejected": "not_overridable",
+          "rc": 2,
+          "request_sha256": "69121a8c20bf8c08d71feed673e90b1f9fce8c5e21c58de7b04282a472b648cb",
+          "rule": "protected_path",
+          "stderr": "Blocked by Weaver gate (role Builder, ceiling Builder, rule protected_path, above_threshold): .claude/settings.json is protected from edits; operator override rejected: not_overridable. request 69121a8c20bf8c08d71feed673e90b1f9fce8c5e21c58de7b04282a472b648cb"
+        },
+        "run3_replay": {
+          "override_rejected": "not_overridable",
+          "rc": 2,
+          "request_sha256": "69121a8c20bf8c08d71feed673e90b1f9fce8c5e21c58de7b04282a472b648cb",
+          "rule": "protected_path",
+          "stderr": "Blocked by Weaver gate (role Builder, ceiling Builder, rule protected_path, above_threshold): .claude/settings.json is protected from edits; operator override rejected: not_overridable. request 69121a8c20bf8c08d71feed673e90b1f9fce8c5e21c58de7b04282a472b648cb"
+        }
+      },
+      "scenario": "B2-builder-settings-json"
+    },
+    {
+      "checks": {
+        "no_crash": true,
+        "outside_untouched": true,
+        "project_unchanged_outside_state": true,
+        "run1_denied": true,
+        "run1_request_matches_signed_request": true,
+        "run2_expected_rc": true,
+        "run2_expected_rule": true,
+        "run3_denied": true,
+        "run3_replay_reason": true
+      },
+      "expected_run2": {
+        "rc": 0,
+        "rule": null
+      },
+      "file_path": "src/new.py",
+      "pass": true,
+      "role": "Planner",
+      "runs": {
+        "run1_no_override": {
+          "override_rejected": null,
+          "rc": 2,
+          "request_sha256": "fe3294a2e6686f0628fb7046d0352b71dbc6de933a29016e78a2c8c0f4323e14",
+          "rule": "role_not_permitted",
+          "stderr": "Blocked by Weaver gate (role Planner, ceiling Planner, rule role_not_permitted, above_threshold): role Planner under ceiling Planner may not write; an operator may sign .weaver/gate/pending/fe3294a2e6686f0628fb7046d0352b71dbc6de933a29016e78a2c8c0f4323e14.json. request fe3294a2e6686f0628fb7046d0352b71dbc6de933a29016e78a2c8c0f4323e14"
+        },
+        "run2_signed_override": {
+          "override_rejected": null,
+          "rc": 0,
+          "request_sha256": null,
+          "rule": null,
+          "stderr": ""
+        },
+        "run3_replay": {
+          "override_rejected": "replayed",
+          "rc": 2,
+          "request_sha256": "fe3294a2e6686f0628fb7046d0352b71dbc6de933a29016e78a2c8c0f4323e14",
+          "rule": "role_not_permitted",
+          "stderr": "Blocked by Weaver gate (role Planner, ceiling Planner, rule role_not_permitted, above_threshold): role Planner under ceiling Planner may not write; operator override rejected: replayed; an operator may sign .weaver/gate/pending/fe3294a2e6686f0628fb7046d0352b71dbc6de933a29016e78a2c8c0f4323e14.json. request fe3294a2e6686f0628fb7046d0352b71dbc6de933a29016e78a2c8c0f4323e14"
+        }
+      },
+      "scenario": "CTRL-planner-inside-eligible"
+    }
+  ],
+  "schema": "weaver.gap003.regression_report.v1"
+}

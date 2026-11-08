@@ -43,9 +43,21 @@ def test_report_is_a_local_pass_with_bounded_scope(report):
     assert report["claude_code_version"].startswith("2.")
 
 
-def test_report_was_produced_by_the_committed_policy(report):
+# The G2 run used policy v3 at the frozen baseline 300bd32. The GAP-003
+# remediation candidate changes policy.py, so this evidence is historical: it
+# covers the baseline policy, not the candidate. G2 must be re-run on the
+# candidate before any G2 claim is made for it.
+BASELINE_POLICY_SHA256 = "194aff158e899021394129ac477e2c639bda379fbf3965874c6c0753bc387398"
+
+
+def test_report_was_produced_by_the_baseline_policy(report):
+    assert report["policy_file_sha256"] == BASELINE_POLICY_SHA256
+
+
+def test_report_does_not_cover_the_current_policy():
     policy = REPO / "runtime" / "claude_code_gate" / "policy.py"
-    assert report["policy_file_sha256"] == hashlib.sha256(policy.read_bytes()).hexdigest()
+    assert hashlib.sha256(policy.read_bytes()).hexdigest() != BASELINE_POLICY_SHA256, (
+        "policy.py matches the baseline again; revisit whether the G2 evidence covers it")
 
 
 def test_every_enforced_scenario_blocked_the_subagent_with_records(report):

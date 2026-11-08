@@ -1,302 +1,566 @@
-"""GAP-003-G3: the operator override is authenticated, single-use, bound, audited,
-and cannot be issued by the agent.
+"""GAP-003 remediation candidate: operator override, trusted root, key registry, manifest.
 
-The hook runs as a subprocess with realistic PreToolUse events, as in
-tests/test_claude_code_gate.py. "Operator" actions use the operator's private
-key, which the hook never reads. "Agent" actions use everything the agent could
-reach: the project files, the public key, this code, and a key of its own.
+Organised by the v0.3 §9 test IDs. Every test asserts the reason, not only the
+exit code. These are implementer-authored tests; they are not the R8
+independent reproduction.
+
+R7: cryptography is imported directly. If it is missing this module fails to
+collect instead of skipping, so a green run cannot hide an untested G3.
 """
 
 from __future__ import annotations
 
+import io
 import json
 import os
+import re
 import shutil
+import sqlite3
 import subprocess
 import sys
 from datetime import datetime, timedelta, timezone
+from hashlib import sha256
 from pathlib import Path
 
+import cryptography  # noqa: F401  (R7: hard dependency, never importorskip)
 import pytest
+from cryptography.hazmat.primitives.asymmetric.ed25519 import Ed25519PrivateKey
 
-cryptography = pytest.importorskip("cryptography")
-from cryptography.hazmat.primitives.asymmetric.ed25519 import Ed25519PrivateKey  # noqa: E402
-
-from core.authority.chronicle import verify_file  # noqa: E402
-from core.authority.gate import request_hash  # noqa: E402
-from runtime.claude_code_gate.override import MAX_LIFETIME, fingerprint, sign  # noqa: E402
+from core.authority.chronicle import Chronicle, verify_file
+from core.authority.gate import request_hash
+from core.authority.replay import SqliteReplayStore
+from runtime.claude_code_gate import hook
+from runtime.claude_code_gate.manifest import MANIFEST_FILES, build_manifest, policy_digest
+from runtime.claude_code_gate.override import OVERRIDE_SCHEMA, LiveContext, sign
+from runtime.claude_code_gate.policy import ELIGIBLE_RULES, decide
+from runtime.claude_code_gate.registry import fingerprint
+from runtime.claude_code_gate.trusted_root import write_anchor
 
 REPO = Path(__file__).resolve().parents[1]
 STATE = Path(".weaver") / "gate"
+REQ = re.compile(r"request ([0-9a-f]{64})")
 
 
-def keypair():
-    key = Ed25519PrivateKey.generate()
-    return key.private_bytes_raw(), key.public_key().public_bytes_raw().hex()
+def utc_now():
+    return datetime.now(timezone.utc)
+
+
+class Gate:
+    """A project, an anchor, a pinned key registry and one operator key."""
+
+    def __init__(self, tmp_path: Path):
+        self.root = tmp_path / "project"
+        self.root.mkdir()
+        (self.root / "src").mkdir()
+        (self.root / "src" / "app.py").write_text("x = 1\n")
+        (self.root / ".claude").mkdir()
+        (self.root / ".claude" / "settings.json").write_text("{}\n")
+        os.symlink(".claude", self.root / "linkdir")
+        self.outside = tmp_path / "outside"
+        self.outside.mkdir()
+        self.anchor_dir = tmp_path / "anchor"
+        self.anchor_dir.mkdir()
+        self.anchor = self.anchor_dir / "anchor.json"
+        self.registry = self.anchor_dir / "key_registry.json"
+        self.key = Ed25519PrivateKey.generate()
+        now = utc_now()
+        self.entries = [self.entry(self.key, "op-1", "op.alice", not_before=now - timedelta(days=1), not_after=now + timedelta(days=30))]
+        self.publish()
+
+    @staticmethod
+    def entry(key, key_id, operator_id, *, not_before, not_after, status="active", revoked_at=None):
+        pub = key.public_key().public_bytes_raw().hex()
+        return {"key_id": key_id, "algorithm": "ed25519", "public_key_hex": pub, "fingerprint": fingerprint(pub),
+                "operator_id": operator_id, "not_before": not_before.isoformat(), "not_after": not_after.isoformat(),
+                "status": status, "revoked_at": revoked_at.isoformat() if revoked_at else None}
+
+    def publish(self):
+        raw = json.dumps({"schema": "weaver.gate.key_registry.v1", "keys": self.entries}, indent=2).encode()
+        self.registry.write_bytes(raw)
+        write_anchor(self.anchor, self.root, registry_path=self.registry, registry_sha256=sha256(raw).hexdigest())
+
+    def revoke(self, at):
+        self.entries[0] = {**self.entries[0], "status": "revoked", "revoked_at": at.isoformat()}
+        self.publish()
+
+    def env(self, role="Planner", **extra):
+        env = {"CLAUDE_PROJECT_DIR": str(self.root), "WEAVER_GATE_ANCHOR": str(self.anchor), "WEAVER_GATE_ROLE": role}
+        env.update(extra)
+        return env
+
+    def event(self, tool, tool_input, **extra):
+        return {"hook_event_name": "PreToolUse", "tool_name": tool, "tool_input": tool_input, "cwd": str(self.root), **extra}
+
+    def run(self, tool, tool_input, role="Planner", *, env=None, store_factory=None, now=None, **extra):
+        err = io.StringIO()
+        rc = hook.run_hook(io.StringIO(json.dumps(self.event(tool, tool_input, **extra))), err,
+                           env if env is not None else self.env(role), now=now, store_factory=store_factory)
+        text = err.getvalue()
+        match = REQ.search(text)
+        return rc, text, (match.group(1) if match else None)
+
+    def context(self, tool, tool_input, role="Planner", ceiling=None):
+        """The eligible-form signing context an operator would sign for this call."""
+        ceiling = ceiling or role
+        d = decide(tool, tool_input, self.root, role, ceiling)
+        req = request_hash({"tool": tool, "input": tool_input, "role": role, "ceiling": ceiling,
+                            "agent_id": None, "resolved_target": d.target})
+        return req, LiveContext(req, "role_not_permitted", d.target, d.target_identity, policy_digest()).signing_context()
+
+    def signed(self, context, *, key=None, key_id="op-1", operator="op.alice", nonce="n-0001",
+               issued=None, minutes=10, **changes):
+        ctx = {**context, **changes}
+        return sign((key or self.key).private_bytes_raw(), key_id=key_id, operator_id=operator, reason="reviewed",
+                    nonce=nonce, issued_at=issued or utc_now(), lifetime=timedelta(minutes=minutes), context=ctx)
+
+    def place(self, req, doc):
+        path = self.root / STATE / "overrides" / f"{req}.json"
+        path.parent.mkdir(parents=True, exist_ok=True)
+        path.write_text(doc if isinstance(doc, str) else json.dumps(doc))
+
+    def entries_logged(self):
+        path = self.root / STATE / "chronicle.jsonl"
+        return [json.loads(line) for line in path.read_text().splitlines()] if path.exists() else []
+
+    def nonce_spent(self, nonce):
+        db = self.root / STATE / "override_nonces.sqlite"
+        return db.exists() and SqliteReplayStore(db).contains(f"operator-override:{nonce}")
 
 
 @pytest.fixture
-def operator():
-    return keypair()
+def g(tmp_path):
+    return Gate(tmp_path)
 
 
-@pytest.fixture
-def agent_key():
-    return keypair()
+WRITE_NEW = ("Write", {"file_path": "src/new.py", "content": "y = 2\n"})
 
 
-@pytest.fixture
-def project(tmp_path):
-    (tmp_path / "src").mkdir()
-    (tmp_path / "src" / "app.py").write_text("x = 1\n")
-    (tmp_path / ".claude").mkdir()
-    (tmp_path / ".claude" / "settings.json").write_text("{}\n")
-    return tmp_path
+def approve(g, tool, tool_input, role="Planner", **kw):
+    """Deny once, then sign and place a valid override for exactly that call."""
+    req, ctx = g.context(tool, tool_input, role)
+    doc = g.signed(ctx, **kw)
+    g.place(req, doc)
+    return req, doc
 
 
-EDIT = {"file_path": "src/app.py", "old_string": "x = 1", "new_string": "x = 2"}
+# --- OQ-1: eligibility is a closed allowlist -------------------------------------
 
 
-def event(tool="Edit", tool_input=None, project=None, **extra):
-    return {"hook_event_name": "PreToolUse", "tool_name": tool, "tool_input": EDIT if tool_input is None else tool_input,
-            "cwd": str(project), **extra}
+def test_only_role_not_permitted_is_eligible():
+    assert ELIGIBLE_RULES == frozenset({"role_not_permitted"})
 
 
-def req_sha(tool="Edit", tool_input=None, role="Planner", ceiling="Planner", agent_id=None):
-    return request_hash({"tool": tool, "input": EDIT if tool_input is None else tool_input, "role": role, "ceiling": ceiling, "agent_id": agent_id})
+def test_every_other_denial_including_future_ones_is_non_overridable():
+    from runtime.claude_code_gate.policy import Decision
+    source = (REPO / "runtime" / "claude_code_gate" / "policy.py").read_text()
+    emitted = set(re.findall(r'_veto\("([a-z_]+)"', source))
+    assert "role_not_permitted" in emitted and len(emitted) > 10
+    for rule in emitted | {"outside_project", "some_future_reason", "unsolicited_override", "trusted_root_mismatch"}:
+        assert Decision(False, rule, "r").overridable is (rule == "role_not_permitted"), rule
+    assert Decision(True, "role_not_permitted", "allowed").overridable is False
 
 
-def run(project, body, pubkey=None, role="Planner"):
-    env = {**os.environ, "CLAUDE_PROJECT_DIR": str(project), "WEAVER_GATE_ROLE": role}
-    env.pop("WEAVER_GATE_OPERATOR_PUBKEY", None)
-    if pubkey:
-        env["WEAVER_GATE_OPERATOR_PUBKEY"] = pubkey
-    return subprocess.run([sys.executable, "-m", "runtime.claude_code_gate.hook"], input=json.dumps(body),
-                          capture_output=True, text=True, cwd=REPO, env=env)
-
-
-def place(project, doc, sha=None):
-    path = project / STATE / "overrides" / f"{sha or doc['request_sha256']}.json"
-    path.parent.mkdir(parents=True, exist_ok=True)
-    path.write_text(json.dumps(doc))
-    return path
-
-
-def signed(private, sha, *, minutes=10, issued=None, nonce="n-0001", reason="reviewed by operator"):
-    issued = issued or datetime.now(timezone.utc)
-    return sign(private, request_sha256=sha, operator_id="operator.ryan", reason=reason, nonce=nonce,
-                issued_at=issued, lifetime=timedelta(minutes=minutes))
-
-
-def chronicle(project):
-    path = project / STATE / "chronicle.jsonl"
-    return [json.loads(line)["data"] for line in path.read_text().splitlines()]
-
-
-# --- Baseline ---------------------------------------------------------------------
-
-
-def test_denial_prints_the_request_hash_the_operator_signs(project, operator):
-    result = run(project, event(project=project), pubkey=operator[1])
-    assert result.returncode == 2
-    assert f"request {req_sha()}" in result.stderr
-
-
-# --- Authenticated operator path ------------------------------------------------
-
-
-def test_valid_operator_override_allows_exactly_that_call_once(project, operator):
-    place(project, signed(operator[0], req_sha()))
-    first = run(project, event(project=project), pubkey=operator[1])
-    assert first.returncode == 0, first.stderr
-    second = run(project, event(project=project), pubkey=operator[1])
-    assert second.returncode == 2 and "override rejected: replayed" in second.stderr
-
-
-def test_override_use_is_audited_in_the_chronicle(project, operator):
-    doc = signed(operator[0], req_sha(), reason="hotfix approved in ticket 42")
-    place(project, doc)
-    run(project, event(project=project), pubkey=operator[1])
-    [entry] = chronicle(project)
-    assert entry["decision"] == "ALLOW"
-    record = entry["context"]["override"]
-    assert record["operator_id"] == "operator.ryan"
-    assert record["reason"] == "hotfix approved in ticket 42"
-    assert record["key_fingerprint"] == fingerprint(operator[1])
-    assert record["nonce"] == doc["nonce"]
-    assert record["overridden_rule"] == "role_not_permitted"
-    assert "denial" not in entry["context"]
-    assert verify_file(project / STATE / "chronicle.jsonl").ok
-
-
-def test_override_is_bound_to_one_request(project, operator):
-    # Signed for editing src/app.py, placed under the hash of a different call.
-    other = {"file_path": "src/app.py", "old_string": "x = 1", "new_string": "x = 999"}
-    place(project, signed(operator[0], req_sha()), sha=req_sha(tool_input=other))
-    result = run(project, event(tool_input=other, project=project), pubkey=operator[1])
-    assert result.returncode == 2 and "wrong_request" in result.stderr
-
-
-def test_override_is_bound_to_role_and_agent(project, operator):
-    # Signed for the main thread; the same edit from a subagent is a different request.
-    place(project, signed(operator[0], req_sha()), sha=req_sha(role="Researcher", agent_id="sub-1"))
-    body = event(project=project, agent_id="sub-1", agent_type="Researcher")
-    result = run(project, body, pubkey=operator[1])
-    assert result.returncode == 2 and "wrong_request" in result.stderr
+# --- Authorization regressions (R1, R5): each ALLOWed on the baseline or must stay denied --
 
 
 @pytest.mark.parametrize(
-    ("kwargs", "problem"),
+    ("case", "tool", "tool_input", "role", "rule"),
     [
-        ({"issued": datetime.now(timezone.utc) - timedelta(minutes=20)}, "expired"),
-        ({"issued": datetime.now(timezone.utc) + timedelta(minutes=5)}, "not_yet_valid"),
-        ({"minutes": 60}, "lifetime_too_long"),
+        ("X1", "Write", {"file_path": ".claude/settings.json", "content": "x"}, "Planner", "protected_path"),
+        ("X2", "Write", {"file_path": "OUTSIDE", "content": "x"}, "Planner", "outside_project"),
+        ("X3", "Write", {"file_path": "linkdir/settings.json", "content": "x"}, "Planner", "protected_path"),
+        ("B1", "Write", {"file_path": ".claude/settings.json", "content": "x"}, "Builder", "protected_path"),
+        ("B2", "Write", {"file_path": "OUTSIDE", "content": "x"}, "Builder", "outside_project"),
+        ("B3", "Bash", {"command": "rm -rf src"}, "Planner", "bash_not_allowlisted"),
+        ("B4", "Agent", {"subagent_type": "Builder", "prompt": "x"}, "Planner", "delegation_escalation"),
+        ("B4b", "Agent", {"subagent_type": "Builder", "prompt": "x"}, "Researcher", "delegation_escalation"),
     ],
 )
-def test_time_limits(project, operator, kwargs, problem):
-    place(project, signed(operator[0], req_sha(), **kwargs))
-    result = run(project, event(project=project), pubkey=operator[1])
-    assert result.returncode == 2 and problem in result.stderr
+def test_mandatory_denials_survive_a_validly_signed_override(g, case, tool, tool_input, role, rule):
+    if tool_input.get("file_path") == "OUTSIDE":
+        tool_input = {**tool_input, "file_path": str(g.outside / "target.txt")}
+    rc, err, _ = g.run(tool, tool_input, role)
+    assert rc == 2 and f"rule {rule}" in err, (case, err)
+    req, _ = approve(g, tool, tool_input, role)
+    rc, err, _ = g.run(tool, tool_input, role)
+    assert rc == 2 and f"rule {rule}" in err and "operator override rejected: not_overridable" in err, (case, err)
+    assert g.entries_logged()[-1]["data"]["context"]["override_rejected"] == "not_overridable"
+    assert not (g.root / STATE / "pending" / f"{req}.json").exists()  # nothing is offered for signing
 
 
-def test_maximum_lifetime_is_fifteen_minutes():
-    assert MAX_LIFETIME == timedelta(minutes=15)
+def test_a1_eligible_role_denial_is_lifted_exactly_once(g):
+    rc, err, req = g.run(*WRITE_NEW)
+    assert rc == 2 and "rule role_not_permitted" in err and req
+    pending = json.loads((g.root / STATE / "pending" / f"{req}.json").read_text())
+    doc = g.signed(pending["signing_context"])
+    g.place(req, doc)
+    assert g.run(*WRITE_NEW)[0] == 0
+    # A2: the same override again.
+    rc, err, _ = g.run(*WRITE_NEW)
+    assert rc == 2 and "operator override rejected: replayed" in err
+
+
+def test_a3_role_permitted_call_without_material_is_allowed(g):
+    assert g.run("Read", {"file_path": "src/app.py"})[0] == 0
+
+
+def test_a4_unsolicited_override_is_denied_and_does_not_spend_the_nonce(g):
+    req, ctx = g.context("Read", {"file_path": "src/app.py"})
+    g.place(req, g.signed(ctx, nonce="n-unsolicited"))
+    rc, err, _ = g.run("Read", {"file_path": "src/app.py"})
+    assert rc == 2 and "rule unsolicited_override" in err
+    assert not g.nonce_spent("n-unsolicited")
+
+
+def test_u1_malformed_material_is_denied_whether_or_not_the_role_permits(g):
+    req, _ = g.context("Read", {"file_path": "src/app.py"})
+    g.place(req, "{not json")
+    rc, err, _ = g.run("Read", {"file_path": "src/app.py"})
+    assert rc == 2 and "rule unsolicited_override" in err
+    req, _ = g.context(*WRITE_NEW)
+    g.place(req, "{not json")
+    rc, err, _ = g.run(*WRITE_NEW)
+    assert rc == 2 and "operator override rejected: malformed" in err
+
+
+def test_a5_a_failed_check_leaves_the_nonce_unspent(g):
+    req, ctx = g.context(*WRITE_NEW)
+    g.place(req, g.signed(ctx, nonce="n-shared", resolved_target="src/other.py"))
+    rc, err, _ = g.run(*WRITE_NEW)
+    assert rc == 2 and "context_mismatch" in err
+    assert not g.nonce_spent("n-shared")
+    g.place(req, g.signed(ctx, nonce="n-shared"))
+    assert g.run(*WRITE_NEW)[0] == 0
+
+
+# --- Override validation (D-1, D-3, R2) ------------------------------------------
 
 
 @pytest.mark.parametrize(
-    ("tool", "tool_input", "rule"),
+    ("case", "change", "problem"),
     [
-        ("Edit", {"file_path": ".claude/settings.json", "old_string": "{}", "new_string": "x"}, "protected_path"),
-        ("Bash", {"command": "cat .weaver/gate/chronicle.jsonl"}, "bash_protected_path"),
-        ("Edit", {}, "missing_path"),
+        ("M1", {"overridden_rule": "outside_project"}, "context_mismatch"),
+        ("M2", {"resolved_target": "src/elsewhere.py"}, "context_mismatch"),
+        ("M3", {"policy_digest": "0" * 64}, "policy_digest_mismatch"),
+        ("M4", {"target_identity": "1:2/new.py"}, "context_mismatch"),
+        ("M5", {"request_sha256": "f" * 64}, "context_mismatch"),
     ],
 )
-def test_non_overridable_rules_stay_denied_even_with_a_valid_signature(project, operator, tool, tool_input, rule):
-    sha = req_sha(tool=tool, tool_input=tool_input, role="Builder", ceiling="Builder")
-    place(project, signed(operator[0], sha))
-    result = run(project, event(tool=tool, tool_input=tool_input, project=project), pubkey=operator[1], role="Builder")
-    assert result.returncode == 2 and "not_overridable" in result.stderr and f"rule {rule}" in result.stderr
+def test_signed_context_must_equal_the_recomputed_context(g, case, change, problem):
+    req, ctx = g.context(*WRITE_NEW)
+    g.place(req, g.signed(ctx, **change))
+    rc, err, _ = g.run(*WRITE_NEW)
+    assert rc == 2 and f"operator override rejected: {problem}" in err, (case, err)
 
 
-def test_no_pinned_key_means_no_overrides(project, operator):
-    place(project, signed(operator[0], req_sha()))
-    result = run(project, event(project=project), pubkey=None)
-    assert result.returncode == 2 and "overrides_not_configured" in result.stderr
+def test_target_identity_binds_the_file_not_just_its_name(g):
+    # The signature names src/app.py's current inode. Replacing the file
+    # (same name, new inode) invalidates it. The replacement is created while
+    # the original still exists, so the two inodes differ. Residual: after an
+    # unlink, a filesystem may reuse the inode number, and (dev, ino) identity
+    # cannot tell the files apart. OS protection of the target (G1) covers that.
+    tool_input = {"file_path": "src/app.py", "content": "x = 3\n"}
+    req, ctx = g.context("Write", tool_input)
+    g.place(req, g.signed(ctx))
+    (g.root / "src" / "replacement").write_text("replaced\n")
+    os.replace(g.root / "src" / "replacement", g.root / "src" / "app.py")
+    rc, err, _ = g.run("Write", tool_input)
+    assert rc == 2 and "context_mismatch" in err
 
 
-def test_malformed_override_file_is_rejected(project, operator):
-    path = project / STATE / "overrides" / f"{req_sha()}.json"
-    path.parent.mkdir(parents=True)
-    path.write_text("{not json")
-    result = run(project, event(project=project), pubkey=operator[1])
-    assert result.returncode == 2 and "override rejected: malformed" in result.stderr
+@pytest.mark.parametrize("field", ["reason", "nonce", "expires_at", "operator_id", "key_id"])
+def test_editing_any_signed_field_breaks_the_signature(g, field):
+    req, ctx = g.context(*WRITE_NEW)
+    doc = g.signed(ctx)
+    doc[field] = doc[field] + "x" if field != "expires_at" else (utc_now() + timedelta(minutes=14)).isoformat()
+    g.place(req, doc)
+    rc, err, _ = g.run(*WRITE_NEW)
+    assert rc == 2 and re.search(r"override rejected: (bad_signature|unknown_key)", err), err
 
 
-# --- The agent cannot issue an override -----------------------------------------
+def test_a_key_the_registry_does_not_list_is_rejected(g):
+    agent_key = Ed25519PrivateKey.generate()
+    req, ctx = g.context(*WRITE_NEW)
+    g.place(req, g.signed(ctx, key=agent_key))          # claims key_id op-1, signs with its own key
+    assert "bad_signature" in g.run(*WRITE_NEW)[1]
+    g.place(req, g.signed(ctx, key=agent_key, key_id="agent-key"))
+    assert "unknown_key" in g.run(*WRITE_NEW)[1]
 
 
-def test_agent_signing_with_its_own_key_is_rejected(project, operator, agent_key):
-    forged = signed(agent_key[0], req_sha())  # carries the agent key's fingerprint
-    place(project, forged)
-    result = run(project, event(project=project), pubkey=operator[1])
-    assert result.returncode == 2 and "unknown_key" in result.stderr
+def test_a_public_key_planted_in_the_project_is_ignored(g):
+    agent_key = Ed25519PrivateKey.generate()
+    (g.root / "key_registry.json").write_text(json.dumps({"schema": "weaver.gate.key_registry.v1", "keys": [
+        Gate.entry(agent_key, "agent", "op.alice", not_before=utc_now() - timedelta(days=1), not_after=utc_now() + timedelta(days=1))]}))
+    req, ctx = g.context(*WRITE_NEW)
+    g.place(req, g.signed(ctx, key=agent_key, key_id="agent"))
+    assert "unknown_key" in g.run(*WRITE_NEW)[1]
 
 
-def test_agent_claiming_the_operator_fingerprint_fails_the_signature(project, operator, agent_key):
-    forged = signed(agent_key[0], req_sha())
-    forged["key_fingerprint"] = fingerprint(operator[1])
-    place(project, forged)
-    result = run(project, event(project=project), pubkey=operator[1])
-    assert result.returncode == 2 and "bad_signature" in result.stderr
+def test_key_is_bound_to_its_operator(g):
+    req, ctx = g.context(*WRITE_NEW)
+    g.place(req, g.signed(ctx, operator="op.mallory"))
+    assert "context_mismatch" in g.run(*WRITE_NEW)[1]
 
 
-@pytest.mark.parametrize("field,value", [("reason", "changed"), ("operator_id", "someone.else"), ("nonce", "n-9999"),
-                                         ("expires_at", "2099-01-01T00:00:00+00:00")])
-def test_editing_any_signed_field_breaks_the_signature(project, operator, field, value):
-    doc = signed(operator[0], req_sha())
-    doc[field] = value
-    place(project, doc)
-    result = run(project, event(project=project), pubkey=operator[1])
-    assert result.returncode == 2 and "bad_signature" in result.stderr
+def test_k1_revoked_key(g):
+    g.revoke(utc_now() - timedelta(hours=1))
+    approve(g, *WRITE_NEW)
+    assert "override rejected: key_revoked" in g.run(*WRITE_NEW)[1]
 
 
-def test_agent_cannot_write_into_the_overrides_directory_through_the_gate(project, operator):
-    target = f".weaver/gate/overrides/{req_sha()}.json"
-    body = event(tool="Write", tool_input={"file_path": target, "content": "{}"}, project=project)
-    result = run(project, body, pubkey=operator[1], role="Builder")
-    assert result.returncode == 2 and "rule protected_path" in result.stderr
+def test_k2_signature_made_before_revocation_is_unusable_after_it(g):
+    approve(g, *WRITE_NEW, issued=utc_now() - timedelta(minutes=5))
+    g.entries[0] = {**g.entries[0], "revoked_at": (utc_now() - timedelta(minutes=1)).isoformat()}
+    g.publish()
+    assert "override rejected: key_revoked" in g.run(*WRITE_NEW)[1]
 
 
-def test_a_public_key_planted_in_the_project_is_ignored(project, operator, agent_key):
-    # Only the environment pins the key. A key file the agent wrote does nothing.
-    (project / STATE).mkdir(parents=True, exist_ok=True)
-    (project / STATE / "operator.pub").write_text(agent_key[1])
-    place(project, signed(agent_key[0], req_sha()))
-    result = run(project, event(project=project), pubkey=None)
-    assert result.returncode == 2 and "overrides_not_configured" in result.stderr
+@pytest.mark.parametrize(
+    ("window", "problem"),
+    [((timedelta(hours=1), timedelta(days=1)), "key_not_yet_valid"), ((-timedelta(days=2), -timedelta(days=1)), "key_expired")],
+)
+def test_k3_key_validity_window(g, window, problem):
+    now = utc_now()
+    g.entries[0] = Gate.entry(g.key, "op-1", "op.alice", not_before=now + window[0], not_after=now + window[1])
+    g.publish()
+    approve(g, *WRITE_NEW)
+    assert f"override rejected: {problem}" in g.run(*WRITE_NEW)[1]
 
 
-def test_rejected_attempts_are_audited_with_their_reason(project, operator, agent_key):
-    place(project, signed(agent_key[0], req_sha()))
-    run(project, event(project=project), pubkey=operator[1])
-    [entry] = chronicle(project)
-    assert entry["decision"] == "VETO"
-    assert entry["context"]["override_rejected"] == "unknown_key"
-    assert entry["context"]["denial"]["rule"] == "role_not_permitted"
+def test_k4_revocation_between_validation_and_claim_is_honoured_and_the_nonce_stays_spent(g):
+    class RevokingStore:
+        def __init__(self, real):
+            self.real = real
+
+        def check_and_store(self, nonce, **kw):
+            fresh = self.real.check_and_store(nonce, **kw)
+            g.revoke(utc_now() - timedelta(seconds=1))
+            return fresh
+
+    approve(g, *WRITE_NEW, nonce="n-k4")
+    rc, err, _ = g.run(*WRITE_NEW, store_factory=lambda state, env: RevokingStore(hook._default_store(state, env)))
+    assert rc == 2 and "override rejected: key_revoked" in err
+    assert g.nonce_spent("n-k4")
 
 
-def test_forged_override_does_not_burn_the_real_one(project, operator, agent_key):
-    # An agent that guesses the nonce cannot spend it: nonces are consumed only after a valid signature.
-    real = signed(operator[0], req_sha(), nonce="shared-nonce")
-    forged = signed(agent_key[0], req_sha(), nonce="shared-nonce")
-    forged["key_fingerprint"] = fingerprint(operator[1])
-    place(project, forged)
-    assert run(project, event(project=project), pubkey=operator[1]).returncode == 2
-    place(project, real)
-    assert run(project, event(project=project), pubkey=operator[1]).returncode == 0
+def test_g1_registry_that_does_not_match_its_pin_is_untrusted(g):
+    approve(g, *WRITE_NEW)
+    g.registry.write_text(g.registry.read_text().replace("op.alice", "op.alice "))
+    assert "override rejected: registry_untrusted" in g.run(*WRITE_NEW)[1]
 
 
-# --- Separate control: the operator's key is not the agent's to read ------------
+def test_no_registry_in_the_anchor_means_no_overrides(g):
+    write_anchor(g.anchor, g.root)
+    approve(g, *WRITE_NEW)
+    assert "override rejected: overrides_not_configured" in g.run(*WRITE_NEW)[1]
 
 
-def test_operator_tool_writes_the_private_key_0600_and_never_into_the_hook(tmp_path):
-    out = subprocess.run([sys.executable, "-m", "runtime.claude_code_gate.operator", "keygen", "--private", str(tmp_path / "op.key")],
-                         cwd=REPO, capture_output=True, text=True, check=True)
-    info = json.loads(out.stdout)
-    assert oct((tmp_path / "op.key").stat().st_mode & 0o777) == "0o600"
-    assert len(info["public_key"]) == 64
+def test_l1_baseline_format_document_is_refused(g):
+    req, ctx = g.context(*WRITE_NEW)
+    legacy = {"schema": "weaver.claude_code_gate.override.v1", "request_sha256": req, "operator_id": "op.alice",
+              "reason": "r", "nonce": "n", "issued_at": utc_now().isoformat(),
+              "expires_at": (utc_now() + timedelta(minutes=5)).isoformat(), "key_fingerprint": "0" * 64, "signature": "00"}
+    g.place(req, legacy)
+    assert "override rejected: unknown_schema" in g.run(*WRITE_NEW)[1]
+
+
+@pytest.mark.parametrize(
+    ("kw", "problem"),
+    [
+        ({"issued": utc_now() - timedelta(minutes=20), "minutes": 10}, "expired"),
+        ({"issued": utc_now() + timedelta(minutes=5), "minutes": 5}, "not_yet_valid"),
+        ({"minutes": 20}, "lifetime_too_long"),
+    ],
+)
+def test_validity_window(g, kw, problem):
+    approve(g, *WRITE_NEW, **kw)
+    assert f"override rejected: {problem}" in g.run(*WRITE_NEW)[1]
+
+
+# --- Concurrency and failure (TX-2, NM) -----------------------------------------
+
+
+def test_c1_racing_processes_get_exactly_one_allow(g):
+    approve(g, *WRITE_NEW, nonce="n-race")
+    env = {**os.environ, **g.env("Planner")}
+    body = json.dumps(g.event(*WRITE_NEW))
+    procs = [subprocess.Popen([sys.executable, "-m", "runtime.claude_code_gate.hook"], stdin=subprocess.PIPE,
+                              stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True, cwd=REPO, env=env) for _ in range(10)]
+    results = [p.communicate(body) for p in procs]
+    codes = [p.returncode for p in procs]
+    assert codes.count(0) == 1, codes
+    assert all("replayed" in err for (_, err), code in zip(results, codes) if code != 0)
+    assert verify_file(g.root / STATE / "chronicle.jsonl").ok
+
+
+def test_c2_chronicle_failure_after_claim_denies_and_the_nonce_stays_spent(g, monkeypatch):
+    approve(g, *WRITE_NEW, nonce="n-c2")
+    g.run("Read", {"file_path": "src/app.py"})  # create the chronicle first
+
+    def broken(self, *a, **k):
+        raise OSError("disk full")
+
+    monkeypatch.setattr(Chronicle, "append", broken)
+    rc, err, _ = g.run(*WRITE_NEW)
+    assert rc == 2 and "rule chronicle_write_failed" in err
+    assert g.nonce_spent("n-c2")
+    monkeypatch.undo()
+    rc, err, _ = g.run(*WRITE_NEW)
+    assert rc == 2 and "replayed" in err
+
+
+def test_c3_locked_nonce_store_denies_within_a_bounded_wait(g):
+    approve(g, *WRITE_NEW, nonce="n-c3")
+    db = g.root / STATE / "override_nonces.sqlite"
+    SqliteReplayStore(db)
+    holder = sqlite3.connect(db, isolation_level=None)
+    holder.execute("BEGIN EXCLUSIVE")
+    try:
+        rc, err, _ = g.run(*WRITE_NEW, env=g.env("Planner", WEAVER_GATE_NONCE_TIMEOUT="0.3"))
+    finally:
+        holder.execute("ROLLBACK")
+        holder.close()
+    assert rc == 2 and "nonce_store_unavailable" in err
+    assert g.run(*WRITE_NEW)[0] == 0  # the nonce was not spent by the failed attempt
+
+
+# --- Trusted root (R3) -----------------------------------------------------------
+
+
+def test_t1_no_anchor_denies_even_with_a_cwd(g):
+    env = g.env(WEAVER_GATE_ANCHOR=str(g.anchor_dir / "absent.json"))
+    env.pop("CLAUDE_PROJECT_DIR")
+    rc, err, _ = g.run("Read", {"file_path": "src/app.py"}, env=env)
+    assert rc == 2 and "rule trusted_root_missing" in err
+    assert g.entries_logged() == []
+
+
+def test_t2_project_dir_that_conflicts_with_the_anchor_is_denied(g, tmp_path):
+    other = tmp_path / "other"
+    other.mkdir()
+    rc, err, _ = g.run("Read", {"file_path": "src/app.py"}, env=g.env(CLAUDE_PROJECT_DIR=str(other)))
+    assert rc == 2 and "rule trusted_root_mismatch" in err
+
+
+def test_t2_root_replaced_at_the_same_path_is_a_mismatch(g, tmp_path):
+    g.root.rename(tmp_path / "moved")
+    g.root.mkdir()
+    rc, err, _ = g.run("Read", {"file_path": "x"})
+    assert rc == 2 and "rule trusted_root_mismatch" in err
+
+
+@pytest.mark.parametrize("damage", ["malformed", "group_writable", "not_root_owned", "symlink"])
+def test_t3_untrusted_or_unreadable_anchor_is_denied(g, damage):
+    if damage == "malformed":
+        g.anchor.write_text("{")
+    elif damage == "group_writable":
+        os.chmod(g.anchor, 0o666)
+    elif damage == "not_root_owned":
+        if os.geteuid() != 0:
+            pytest.skip("needs root to change ownership")
+        os.chown(g.anchor, 65534, 65534)
+    else:
+        real = g.anchor_dir / "real.json"
+        g.anchor.rename(real)
+        os.symlink(real, g.anchor)
+    rc, err, _ = g.run("Read", {"file_path": "src/app.py"})
+    assert rc == 2 and "rule trusted_root_missing" in err
+
+
+def test_event_cwd_does_not_move_the_root(g, tmp_path):
+    # The baseline fell back to the event's cwd. Here the anchored root decides.
+    elsewhere = tmp_path / "elsewhere"
+    elsewhere.mkdir()
+    env = g.env("Builder")
+    env.pop("CLAUDE_PROJECT_DIR")
+    err = io.StringIO()
+    body = {"hook_event_name": "PreToolUse", "tool_name": "Write", "tool_input": {"file_path": ".claude/settings.json"}, "cwd": str(elsewhere)}
+    assert hook.run_hook(io.StringIO(json.dumps(body)), err, env) == 2
+    assert "rule protected_path" in err.getvalue()
+
+
+# --- Audit (R9) --------------------------------------------------------------------
+
+
+def test_override_use_and_rejection_are_chronicled_with_targets(g):
+    approve(g, *WRITE_NEW)
+    assert g.run(*WRITE_NEW)[0] == 0
+    g.run(*WRITE_NEW)
+    used, rejected = g.entries_logged()[-2:]
+    ctx = used["data"]["context"]
+    assert ctx["override"]["operator_id"] == "op.alice" and ctx["override"]["overridden_rule"] == "role_not_permitted"
+    assert (ctx["target"], ctx["target_status"]) == ("src/new.py", "resolved") and ctx["target_identity"]
+    assert rejected["data"]["context"]["override_rejected"] == "replayed"
+    assert rejected["data"]["context"]["denial"]["target"] == "src/new.py"
+    assert verify_file(g.root / STATE / "chronicle.jsonl").ok
+
+
+# --- Enforcement manifest (D-4, M-D2) ----------------------------------------------
+
+
+def test_every_repository_module_the_hook_imports_is_in_the_manifest():
+    code = ("import sys, json; import runtime.claude_code_gate.hook; from pathlib import Path; r = Path('.').resolve(); "
+            "print(json.dumps(sorted(str(Path(m.__file__).resolve().relative_to(r)) for m in list(sys.modules.values()) "
+            "if getattr(m, '__file__', None) and Path(m.__file__).resolve().is_relative_to(r))))")
+    loaded = json.loads(subprocess.run([sys.executable, "-c", code], cwd=REPO, capture_output=True, text=True, check=True).stdout)
+    missing = sorted(set(loaded) - set(MANIFEST_FILES))
+    assert not missing, f"decision-path modules missing from the enforcement manifest: {missing}"
+    assert "runtime/claude_code_gate/gate.sh" in MANIFEST_FILES
+
+
+def test_changing_any_manifest_component_changes_the_digest(tmp_path):
+    base = policy_digest()
+    for rel in MANIFEST_FILES:
+        copy = tmp_path / "code"
+        if copy.exists():
+            shutil.rmtree(copy)
+        for f in MANIFEST_FILES:
+            (copy / f).parent.mkdir(parents=True, exist_ok=True)
+            shutil.copy(REPO / f, copy / f)
+        assert policy_digest(build_manifest(copy)) == base
+        (copy / rel).write_bytes((copy / rel).read_bytes() + b"\n")
+        assert policy_digest(build_manifest(copy)) != base, rel
+
+
+def test_runtime_versions_are_part_of_the_digest():
+    m = build_manifest()
+    assert set(m["runtime"]) == {"python", "cryptography"}
+    changed = {**m, "runtime": {**m["runtime"], "cryptography": "0.0"}}
+    assert policy_digest(changed) != policy_digest(m)
+
+
+# --- Operator tool: the key is not the agent's to read ----------------------------
+
+
+def test_operator_tool_round_trip_signs_the_pending_request(g, tmp_path):
+    key = tmp_path / "op.key"
+    info = json.loads(subprocess.run([sys.executable, "-m", "runtime.claude_code_gate.operator", "keygen", "--private", str(key),
+                                      "--key-id", "op-2", "--operator", "op.bob"], cwd=REPO, capture_output=True, text=True, check=True).stdout)
+    assert oct(key.stat().st_mode & 0o777) == "0o600"
+    g.entries.append(info["registry_entry"])
+    g.publish()
+    rc, _, req = g.run(*WRITE_NEW)
+    assert rc == 2
+    out = g.root / STATE / "overrides" / f"{req}.json"
+    subprocess.run([sys.executable, "-m", "runtime.claude_code_gate.operator", "sign", "--private", str(key), "--key-id", "op-2",
+                    "--operator", "op.bob", "--pending", str(g.root / STATE / "pending" / f"{req}.json"),
+                    "--reason", "approved", "--minutes", "5", "--out", str(out)], cwd=REPO, capture_output=True, text=True, check=True)
+    assert json.loads(out.read_text())["schema"] == OVERRIDE_SCHEMA
+    assert g.run(*WRITE_NEW)[0] == 0
+
+
+def test_hook_and_verification_never_touch_a_private_key():
     hook_source = (REPO / "runtime" / "claude_code_gate" / "hook.py").read_text()
     override_source = (REPO / "runtime" / "claude_code_gate" / "override.py").read_text()
     assert "private" not in hook_source.lower()
-    assert "from_private_bytes" not in override_source.split("def check(")[1]  # verification never touches a private key
-
-
-def test_operator_tool_round_trip(project, tmp_path):
-    key = tmp_path / "op.key"
-    info = json.loads(subprocess.run([sys.executable, "-m", "runtime.claude_code_gate.operator", "keygen", "--private", str(key)],
-                                     cwd=REPO, capture_output=True, text=True, check=True).stdout)
-    out = project / STATE / "overrides" / f"{req_sha()}.json"
-    subprocess.run([sys.executable, "-m", "runtime.claude_code_gate.operator", "sign", "--private", str(key),
-                    "--request", req_sha(), "--operator", "operator.ryan", "--reason", "approved", "--minutes", "5", "--out", str(out)],
-                   cwd=REPO, capture_output=True, text=True, check=True)
-    assert run(project, event(project=project), pubkey=info["public_key"]).returncode == 0
-
-
-def test_operator_tool_refuses_a_lifetime_over_the_maximum(tmp_path):
-    key = tmp_path / "op.key"
-    subprocess.run([sys.executable, "-m", "runtime.claude_code_gate.operator", "keygen", "--private", str(key)],
-                   cwd=REPO, capture_output=True, text=True, check=True)
-    result = subprocess.run([sys.executable, "-m", "runtime.claude_code_gate.operator", "sign", "--private", str(key),
-                             "--request", "0" * 64, "--operator", "o", "--reason", "r", "--minutes", "60", "--out", str(tmp_path / "x.json")],
-                            cwd=REPO, capture_output=True, text=True)
-    assert result.returncode != 0 and not (tmp_path / "x.json").exists()
+    assert "from_private_bytes" not in override_source.split("def validate(")[1]
 
 
 @pytest.mark.skipif(os.geteuid() != 0 or shutil.which("runuser") is None, reason="needs root and runuser")
 def test_agent_identity_cannot_read_an_operator_key_it_does_not_own(tmp_path):
     key = tmp_path / "op.key"
-    subprocess.run([sys.executable, "-m", "runtime.claude_code_gate.operator", "keygen", "--private", str(key)],
-                   cwd=REPO, capture_output=True, text=True, check=True)
+    subprocess.run([sys.executable, "-m", "runtime.claude_code_gate.operator", "keygen", "--private", str(key),
+                    "--key-id", "k", "--operator", "o"], cwd=REPO, capture_output=True, text=True, check=True)
     os.chmod(tmp_path, 0o755)
     os.chown(key, 0, 0)
     result = subprocess.run(["runuser", "-u", "nobody", "--", "cat", str(key)], capture_output=True, text=True)

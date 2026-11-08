@@ -24,9 +24,34 @@ jobs:
         run: |
           python -m pip install --upgrade pip
           python -m pip install -e ".[dev]"
+          # R7: the G3 override path needs cryptography; install it explicitly.
+          python -m pip install "cryptography>=42"
 
+      # The gate's trust anchor must be root-owned (an agent running as a
+      # non-root identity cannot forge one), so the suite runs as root.
       - name: Run tests
-        run: pytest -q
+        run: sudo -E env "PATH=$PATH" python -m pytest -q
+
+      - name: G3 tests must run, not skip (R7)
+        run: |
+          sudo -E env "PATH=$PATH" python -m pytest -q -p no:cacheprovider tests/test_claude_code_gate_override.py --junitxml=g3-junit.xml
+          python - <<'PY'
+          import xml.etree.ElementTree as ET
+          suite = ET.parse("g3-junit.xml").getroot()
+          suite = suite if suite.tag == "testsuite" else suite.find("testsuite")
+          tests, skipped, errors, failures = (int(suite.get(k, 0)) for k in ("tests", "skipped", "errors", "failures"))
+          print(f"G3: {tests} tests, {skipped} skipped, {errors} errors, {failures} failures")
+          assert tests > 0 and skipped == 0 and errors == 0 and failures == 0
+          PY
+
+      - name: GAP-003 candidate regression and mutation checks (R1, R5, R6)
+        run: |
+          sudo -E env "PATH=$PATH" python forge/demos/gap003_r1r7_candidate/regression_check.py --out regression_report.json
+          sudo -E env "PATH=$PATH" python forge/demos/gap003_r1r7_candidate/mutations.py --out mutations_report.json
+
+      - name: Return the checkout to the runner user
+        if: always()
+        run: sudo chown -R "$(id -u):$(id -g)" .
 
       - name: Run authority spine demo
         run: |
