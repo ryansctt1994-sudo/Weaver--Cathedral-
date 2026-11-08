@@ -49,8 +49,7 @@ jobs:
           sudo -E env "PATH=$PATH" python forge/demos/gap003_r1r7_candidate/regression_check.py --out regression_report.json
           sudo -E env "PATH=$PATH" python forge/demos/gap003_r1r7_candidate/mutations.py --out mutations_report.json
 
-      - name: Return the checkout to the runner user
-        if: always()
+      - name: Return the checkout to the runner user before the demo
         run: sudo chown -R "$(id -u):$(id -g)" .
 
       - name: Run authority spine demo
@@ -58,10 +57,15 @@ jobs:
           bash forge/demos/authority_spine_001/scripts/run.sh
           bash forge/demos/authority_spine_001/scripts/verify.sh
 
+      # bundle.py runs the whole suite too, so it also needs root for the anchor.
       - name: Build and verify evidence bundle
         run: |
-          python forge/demos/authority_spine_001/scripts/bundle.py forge/demos/authority_spine_001/bundle
+          sudo -E env "PATH=$PATH" python forge/demos/authority_spine_001/scripts/bundle.py forge/demos/authority_spine_001/bundle
           python forge/demos/authority_spine_001/scripts/verify_bundle.py forge/demos/authority_spine_001/bundle
+
+      - name: Return the checkout to the runner user
+        if: always()
+        run: sudo chown -R "$(id -u):$(id -g)" .
 
       - name: Upload evidence bundle
         uses: actions/upload-artifact@v4
