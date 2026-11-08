@@ -1,0 +1,16 @@
+{
+  "hooks": {
+    "PreToolUse": [
+      {
+        "matcher": "*",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "/ABSOLUTE/PATH/TO/venv/bin/weaver-claude-gate pre-tool-use --config /ABSOLUTE/PATH/TO/gate.json || exit 2",
+            "timeout": 60
+          }
+        ]
+      }
+    ]
+  }
+}
