@@ -155,7 +155,7 @@ def run_once(sc: Scenario) -> dict:
 
 def main() -> int:
     ap = argparse.ArgumentParser()
-    ap.add_argument("--out", type=Path, default=Path(__file__).with_name("live_mediation_report.json"))
+    ap.add_argument("--out", type=Path, required=True)
     args = ap.parse_args()
     if os.geteuid() != 0:
         raise SystemExit("needs root: the anchor must be root-owned")
