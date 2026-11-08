@@ -30,11 +30,11 @@ jobs:
       # The gate's trust anchor must be root-owned (an agent running as a
       # non-root identity cannot forge one), so the suite runs as root.
       - name: Run tests
-        run: sudo -E env "PATH=$PATH" python -m pytest -q
+        run: sudo env "PATH=$PATH" python -m pytest -q
 
       - name: G3 tests must run, not skip (R7)
         run: |
-          sudo -E env "PATH=$PATH" python -m pytest -q -p no:cacheprovider tests/test_claude_code_role_gate_override.py --junitxml=g3-junit.xml
+          sudo env "PATH=$PATH" python -m pytest -q -p no:cacheprovider tests/test_claude_code_role_gate_override.py --junitxml=g3-junit.xml
           python - <<'PY'
           import xml.etree.ElementTree as ET
           suite = ET.parse("g3-junit.xml").getroot()
@@ -46,8 +46,8 @@ jobs:
 
       - name: GAP-003 candidate regression and mutation checks (R1, R5, R6)
         run: |
-          sudo -E env "PATH=$PATH" python forge/demos/gap003_r1r7_candidate/regression_check.py --out regression_report.json
-          sudo -E env "PATH=$PATH" python forge/demos/gap003_r1r7_candidate/mutations.py --out mutations_report.json
+          sudo env "PATH=$PATH" python forge/demos/gap003_r1r7_candidate/regression_check.py --out regression_report.json
+          sudo env "PATH=$PATH" python forge/demos/gap003_r1r7_candidate/mutations.py --out mutations_report.json
 
       - name: Return the checkout to the runner user before the demo
         run: sudo chown -R "$(id -u):$(id -g)" .
@@ -60,8 +60,14 @@ jobs:
       # bundle.py runs the whole suite too, so it also needs root for the anchor.
       - name: Build and verify evidence bundle
         run: |
-          sudo -E env "PATH=$PATH" python forge/demos/authority_spine_001/scripts/bundle.py forge/demos/authority_spine_001/bundle
+          sudo env "PATH=$PATH" python forge/demos/authority_spine_001/scripts/bundle.py forge/demos/authority_spine_001/bundle
+          # Custody: root produced the bundle; the runner user verifies it. Both
+          # identities, and each file's owner, mode and hash, are recorded.
+          sudo env "PATH=$PATH" python forge/demos/authority_spine_001/scripts/custody_receipt.py produce \
+            forge/demos/authority_spine_001/bundle --out bundle_custody_producer.json
           python forge/demos/authority_spine_001/scripts/verify_bundle.py forge/demos/authority_spine_001/bundle
+          python forge/demos/authority_spine_001/scripts/custody_receipt.py verify forge/demos/authority_spine_001/bundle \
+            --producer bundle_custody_producer.json --out bundle_custody_verifier.json
 
       - name: Return the checkout to the runner user
         if: always()
@@ -72,6 +78,15 @@ jobs:
         with:
           name: evidence-bundle-py${{ matrix.python-version }}
           path: forge/demos/authority_spine_001/bundle
+          if-no-files-found: error
+
+      - name: Upload bundle custody receipts
+        uses: actions/upload-artifact@v4
+        with:
+          name: bundle-custody-py${{ matrix.python-version }}
+          path: |
+            bundle_custody_producer.json
+            bundle_custody_verifier.json
           if-no-files-found: error
 
   claim-audit:
