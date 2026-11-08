@@ -70,7 +70,10 @@ PATH_FIELDS = {
 OPTIONAL_PATH_TOOLS = frozenset({"Glob", "Grep"})
 
 # Relative prefixes that no write tool may touch and no Bash argument may name.
-PROTECTED_PREFIXES = (".claude", ".weaver", ".git", "runtime/claude_code_gate")
+# Enforcement code is protected: this gate, and the separate gate in
+# runtime/claude_code_gate (merged in #14), whichever of them is installed.
+GATE_CODE_PREFIXES = ("runtime/claude_code_role_gate", "runtime/claude_code_gate")
+PROTECTED_PREFIXES = (".claude", ".weaver", ".git", *GATE_CODE_PREFIXES)
 PROTECTED_COMPONENTS = frozenset({".claude", ".weaver", ".git"})
 
 READ_ONLY_PROGRAMS = frozenset({"ls", "cat", "head", "tail", "wc", "grep", "rg", "pwd"})
@@ -176,7 +179,7 @@ def is_protected(rel: str) -> bool:
 def _names_protected(arg: str) -> bool:
     if any(part in PROTECTED_COMPONENTS for part in Path(arg).parts):
         return True
-    return os.path.normpath(arg).startswith("runtime/claude_code_gate")
+    return os.path.normpath(arg).startswith(GATE_CODE_PREFIXES)
 
 
 def _decide_bash(tool_input: Mapping[str, Any]) -> tuple[Decision | None, str | None, _Target]:

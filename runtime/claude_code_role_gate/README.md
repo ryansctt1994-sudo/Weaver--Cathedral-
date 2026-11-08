@@ -4,7 +4,7 @@ A PreToolUse hook that decides whether each Claude Code tool call may run, for t
 
 ## What the hook can and cannot do
 
-The hook is an **advisory enforcement layer**. It sees only tool calls that Claude Code routes through it. A process the agent starts outside that path, or a Bash command that writes through a route the text check misses, is not stopped by the hook. Protection for files the agent must not change has to come from the operating environment: file ownership and permissions that the agent's user cannot override. `tests/test_claude_code_gate_boundary.py` shows the difference, and `python -m runtime.claude_code_gate.boundary_demo` prints it.
+The hook is an **advisory enforcement layer**. It sees only tool calls that Claude Code routes through it. A process the agent starts outside that path, or a Bash command that writes through a route the text check misses, is not stopped by the hook. Protection for files the agent must not change has to come from the operating environment: file ownership and permissions that the agent's user cannot override. `tests/test_claude_code_role_gate_boundary.py` shows the difference, and `python -m runtime.claude_code_role_gate.boundary_demo` prints it.
 
 ## Behaviour
 
@@ -14,7 +14,7 @@ The hook is an **advisory enforcement layer**. It sees only tool calls that Clau
 | Denied by role or rule, or any internal error | 2 | Blocked. The reason goes to stderr, and Claude Code shows it to the model. |
 | Python crashes, is missing, or exits with any other code | 2 (from `gate.sh`) | Blocked. |
 
-Every decision is appended to `.weaver/gate/chronicle.jsonl` (hash-chained). Each entry records the policy version, role, tool, rule and target. A blocked entry also carries a structured `denial` record, with schema `weaver.claude_code_gate.denial.v1`. Check the chain with `python -m core.authority chronicle-verify .weaver/gate/chronicle.jsonl`.
+Every decision is appended to `.weaver/gate/chronicle.jsonl` (hash-chained). Each entry records the policy version, role, tool, rule and target. A blocked entry also carries a structured `denial` record, with schema `weaver.claude_code_role_gate.denial.v1`. Check the chain with `python -m core.authority chronicle-verify .weaver/gate/chronicle.jsonl`.
 
 ## Roles
 
@@ -39,7 +39,7 @@ Subagent definitions (`.claude/agents/*.md`) whose `name` is a role name get tha
 ## Path and Bash rules
 
 - **Read, Glob, Grep:** the target must resolve inside the project root, following symlinks.
-- **Writes:** also outside `.claude/`, `.weaver/`, `.git/` and `runtime/claude_code_gate/`.
+- **Writes:** also outside `.claude/`, `.weaver/`, `.git/` and `runtime/claude_code_role_gate/`.
 - **Bash:** no pipes, redirection, substitution, grouping, chaining or newlines. Arguments may not be absolute, home-relative, climb out of the root, name a protected path, or use flags that run code or write files.
 
 **The Verifier role runs repository code.** Test code can write anything, so for Verifier the Bash rules do not limit what runs. Only operating-system permissions can. Grant the Verifier role only where that is acceptable.
@@ -49,7 +49,7 @@ Subagent definitions (`.claude/agents/*.md`) whose `name` is a role name get tha
 Only a `role_not_permitted` denial can be lifted, and only after every mandatory check (paths, protected prefixes, symlinks, Bash rules, delegation escalation) has already passed. When the hook issues that denial it writes `.weaver/gate/pending/<request_sha256>.json`. An operator who approves that one call signs it:
 
 ```bash
-python -m runtime.claude_code_gate.operator sign --private <key> --key-id <key_id> --operator <id> \
+python -m runtime.claude_code_role_gate.operator sign --private <key> --key-id <key_id> --operator <id> \
     --pending <project>/.weaver/gate/pending/<sha256>.json --reason "<why>" --minutes 10 \
     --out <project>/.weaver/gate/overrides/<sha256>.json
 ```
@@ -70,7 +70,7 @@ A person adds this to `.claude/settings.json` (or managed settings) and commits 
         "hooks": [
           {
             "type": "command",
-            "command": "bash \"$CLAUDE_PROJECT_DIR/runtime/claude_code_gate/gate.sh\"",
+            "command": "bash \"$CLAUDE_PROJECT_DIR/runtime/claude_code_role_gate/gate.sh\"",
             "timeout": 10,
             "onFailure": "block"
           }

@@ -4,6 +4,10 @@
 
 **Baseline:** `300bd326898e0c1045f6121a700649145ef4f23e` (PR #13 head, frozen). **Specification:** GAP-003 R1–R8 v0.3 DRAFT, not frozen. The implementer is also the specification author, so this work cannot serve as R8 evidence.
 
+## Package location
+
+The candidate lives in `runtime/claude_code_role_gate/`. `main` gained a separate, independent gate in `runtime/claude_code_gate/` (PR #14), so the candidate was moved to its own package to keep the two apart for comparison. Neither is activated automatically: each needs its own hook entry in Claude Code settings. The role gate protects both gate code directories. The G1, G2 and G3 evidence directories record the baseline under its original path and are left unchanged.
+
 ## What changed
 
 | Requirement | Change |

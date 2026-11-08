@@ -1,6 +1,6 @@
 """GAP-003-G1: the operating system, not the hook, stops writes to protected files.
 
-Runs runtime/claude_code_gate/isolation_check.py, which tries 13 kinds of write
+Runs runtime/claude_code_role_gate/isolation_check.py, which tries 13 kinds of write
 as the nobody user against root-owned gate files, and the same attempts against
 an unprotected copy as a negative control. Needs root and runuser; skipped
 otherwise. A pass here is G1_LOCAL_PASS for this machine only.
@@ -29,7 +29,7 @@ pytestmark = pytest.mark.skipif(
 def report(tmp_path_factory):
     out = tmp_path_factory.mktemp("g1") / "report.json"
     result = subprocess.run(
-        [sys.executable, "-m", "runtime.claude_code_gate.isolation_check", "--json", str(out)],
+        [sys.executable, "-m", "runtime.claude_code_role_gate.isolation_check", "--json", str(out)],
         cwd=REPO, capture_output=True, text=True, timeout=300,
     )
     assert out.exists(), result.stdout + result.stderr
@@ -55,7 +55,7 @@ def test_attempts_ran_as_a_nonprivileged_identity(report):
 
 def test_protected_files_are_root_owned_and_root_is_sticky(report):
     perms = layout(report, "protected")["permissions"]
-    for rel in (".claude/settings.json", "runtime/claude_code_gate/policy.py", ".weaver/gate/chronicle.jsonl"):
+    for rel in (".claude/settings.json", "runtime/claude_code_role_gate/policy.py", ".weaver/gate/chronicle.jsonl"):
         assert perms[rel]["uid"] == 0 and perms[rel]["octal"] == "0o644"
     assert perms["."]["mode"] == "drwxrwxrwt"
 

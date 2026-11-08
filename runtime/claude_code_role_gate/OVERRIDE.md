@@ -28,14 +28,14 @@ An authenticated, separately controlled, auditable authorization path that lets 
 2. The operator reviews the pending file (tool, input, target) and signs it:
 
    ```bash
-   python -m runtime.claude_code_gate.operator sign --private ~/.weaver/operator.key --key-id <key_id> \
+   python -m runtime.claude_code_role_gate.operator sign --private ~/.weaver/operator.key --key-id <key_id> \
        --operator <operator_id> --pending <project>/.weaver/gate/pending/<sha256>.json \
        --reason "<why>" --minutes 10 --out <project>/.weaver/gate/overrides/<sha256>.json
    ```
 
 3. The agent makes the same call again, and it goes through once.
 
-Key setup: `python -m runtime.claude_code_gate.operator keygen --private <path> --key-id <id> --operator <id>`. It writes the private key at mode 0600 and prints a registry entry. An administrator adds the entry to the registry and re-pins the registry's SHA-256 in the anchor.
+Key setup: `python -m runtime.claude_code_role_gate.operator keygen --private <path> --key-id <id> --operator <id>`. It writes the private key at mode 0600 and prints a registry entry. An administrator adds the entry to the registry and re-pins the registry's SHA-256 in the anchor.
 
 ## Deployment requirements
 
@@ -50,6 +50,6 @@ The local tests cannot check these:
 
 ## Evidence
 
-- `tests/test_claude_code_gate_override.py`: candidate tests by v0.3 §9 ID (X1–X3, B1–B4, A1–A5, M1–M5, K1–K4, G1, L1, U1, C1–C3, T1–T3, manifest coverage).
+- `tests/test_claude_code_role_gate_override.py`: candidate tests by v0.3 §9 ID (X1–X3, B1–B4, A1–A5, M1–M5, K1–K4, G1, L1, U1, C1–C3, T1–T3, manifest coverage).
 - `forge/demos/gap003_r1r7_candidate/`: the baseline bypass scenarios through `gate.sh` against this candidate, and the R6 mutation report.
 - `forge/demos/gap003_g3_override/`: the baseline round trip on `300bd32` (historical; baseline format).

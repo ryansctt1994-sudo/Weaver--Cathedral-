@@ -29,12 +29,12 @@ from cryptography.hazmat.primitives.asymmetric.ed25519 import Ed25519PrivateKey
 from core.authority.chronicle import Chronicle, verify_file
 from core.authority.gate import request_hash
 from core.authority.replay import SqliteReplayStore
-from runtime.claude_code_gate import hook
-from runtime.claude_code_gate.manifest import MANIFEST_FILES, build_manifest, policy_digest
-from runtime.claude_code_gate.override import OVERRIDE_SCHEMA, LiveContext, sign
-from runtime.claude_code_gate.policy import ELIGIBLE_RULES, decide
-from runtime.claude_code_gate.registry import fingerprint
-from runtime.claude_code_gate.trusted_root import write_anchor
+from runtime.claude_code_role_gate import hook
+from runtime.claude_code_role_gate.manifest import MANIFEST_FILES, build_manifest, policy_digest
+from runtime.claude_code_role_gate.override import OVERRIDE_SCHEMA, LiveContext, sign
+from runtime.claude_code_role_gate.policy import ELIGIBLE_RULES, decide
+from runtime.claude_code_role_gate.registry import fingerprint
+from runtime.claude_code_role_gate.trusted_root import write_anchor
 
 REPO = Path(__file__).resolve().parents[1]
 STATE = Path(".weaver") / "gate"
@@ -151,8 +151,8 @@ def test_only_role_not_permitted_is_eligible():
 
 
 def test_every_other_denial_including_future_ones_is_non_overridable():
-    from runtime.claude_code_gate.policy import Decision
-    source = (REPO / "runtime" / "claude_code_gate" / "policy.py").read_text()
+    from runtime.claude_code_role_gate.policy import Decision
+    source = (REPO / "runtime" / "claude_code_role_gate" / "policy.py").read_text()
     emitted = set(re.findall(r'_veto\("([a-z_]+)"', source))
     assert "role_not_permitted" in emitted and len(emitted) > 10
     for rule in emitted | {"outside_project", "some_future_reason", "unsolicited_override", "trusted_root_mismatch"}:
@@ -357,7 +357,7 @@ def test_no_registry_in_the_anchor_means_no_overrides(g):
 
 def test_l1_baseline_format_document_is_refused(g):
     req, ctx = g.context(*WRITE_NEW)
-    legacy = {"schema": "weaver.claude_code_gate.override.v1", "request_sha256": req, "operator_id": "op.alice",
+    legacy = {"schema": "weaver.claude_code_role_gate.override.v1", "request_sha256": req, "operator_id": "op.alice",
               "reason": "r", "nonce": "n", "issued_at": utc_now().isoformat(),
               "expires_at": (utc_now() + timedelta(minutes=5)).isoformat(), "key_fingerprint": "0" * 64, "signature": "00"}
     g.place(req, legacy)
@@ -384,7 +384,7 @@ def test_c1_racing_processes_get_exactly_one_allow(g):
     approve(g, *WRITE_NEW, nonce="n-race")
     env = {**os.environ, **g.env("Planner")}
     body = json.dumps(g.event(*WRITE_NEW))
-    procs = [subprocess.Popen([sys.executable, "-m", "runtime.claude_code_gate.hook"], stdin=subprocess.PIPE,
+    procs = [subprocess.Popen([sys.executable, "-m", "runtime.claude_code_role_gate.hook"], stdin=subprocess.PIPE,
                               stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True, cwd=REPO, env=env) for _ in range(10)]
     results = [p.communicate(body) for p in procs]
     codes = [p.returncode for p in procs]
@@ -499,13 +499,13 @@ def test_override_use_and_rejection_are_chronicled_with_targets(g):
 
 
 def test_every_repository_module_the_hook_imports_is_in_the_manifest():
-    code = ("import sys, json; import runtime.claude_code_gate.hook; from pathlib import Path; r = Path('.').resolve(); "
+    code = ("import sys, json; import runtime.claude_code_role_gate.hook; from pathlib import Path; r = Path('.').resolve(); "
             "print(json.dumps(sorted(str(Path(m.__file__).resolve().relative_to(r)) for m in list(sys.modules.values()) "
             "if getattr(m, '__file__', None) and Path(m.__file__).resolve().is_relative_to(r))))")
     loaded = json.loads(subprocess.run([sys.executable, "-c", code], cwd=REPO, capture_output=True, text=True, check=True).stdout)
     missing = sorted(set(loaded) - set(MANIFEST_FILES))
     assert not missing, f"decision-path modules missing from the enforcement manifest: {missing}"
-    assert "runtime/claude_code_gate/gate.sh" in MANIFEST_FILES
+    assert "runtime/claude_code_role_gate/gate.sh" in MANIFEST_FILES
 
 
 def test_changing_any_manifest_component_changes_the_digest(tmp_path):
@@ -534,7 +534,7 @@ def test_runtime_versions_are_part_of_the_digest():
 
 def test_operator_tool_round_trip_signs_the_pending_request(g, tmp_path):
     key = tmp_path / "op.key"
-    info = json.loads(subprocess.run([sys.executable, "-m", "runtime.claude_code_gate.operator", "keygen", "--private", str(key),
+    info = json.loads(subprocess.run([sys.executable, "-m", "runtime.claude_code_role_gate.operator", "keygen", "--private", str(key),
                                       "--key-id", "op-2", "--operator", "op.bob"], cwd=REPO, capture_output=True, text=True, check=True).stdout)
     assert oct(key.stat().st_mode & 0o777) == "0o600"
     g.entries.append(info["registry_entry"])
@@ -542,7 +542,7 @@ def test_operator_tool_round_trip_signs_the_pending_request(g, tmp_path):
     rc, _, req = g.run(*WRITE_NEW)
     assert rc == 2
     out = g.root / STATE / "overrides" / f"{req}.json"
-    subprocess.run([sys.executable, "-m", "runtime.claude_code_gate.operator", "sign", "--private", str(key), "--key-id", "op-2",
+    subprocess.run([sys.executable, "-m", "runtime.claude_code_role_gate.operator", "sign", "--private", str(key), "--key-id", "op-2",
                     "--operator", "op.bob", "--pending", str(g.root / STATE / "pending" / f"{req}.json"),
                     "--reason", "approved", "--minutes", "5", "--out", str(out)], cwd=REPO, capture_output=True, text=True, check=True)
     assert json.loads(out.read_text())["schema"] == OVERRIDE_SCHEMA
@@ -550,8 +550,8 @@ def test_operator_tool_round_trip_signs_the_pending_request(g, tmp_path):
 
 
 def test_hook_and_verification_never_touch_a_private_key():
-    hook_source = (REPO / "runtime" / "claude_code_gate" / "hook.py").read_text()
-    override_source = (REPO / "runtime" / "claude_code_gate" / "override.py").read_text()
+    hook_source = (REPO / "runtime" / "claude_code_role_gate" / "hook.py").read_text()
+    override_source = (REPO / "runtime" / "claude_code_role_gate" / "override.py").read_text()
     assert "private" not in hook_source.lower()
     assert "from_private_bytes" not in override_source.split("def validate(")[1]
 
@@ -559,7 +559,7 @@ def test_hook_and_verification_never_touch_a_private_key():
 @pytest.mark.skipif(os.geteuid() != 0 or shutil.which("runuser") is None, reason="needs root and runuser")
 def test_agent_identity_cannot_read_an_operator_key_it_does_not_own(tmp_path):
     key = tmp_path / "op.key"
-    subprocess.run([sys.executable, "-m", "runtime.claude_code_gate.operator", "keygen", "--private", str(key),
+    subprocess.run([sys.executable, "-m", "runtime.claude_code_role_gate.operator", "keygen", "--private", str(key),
                     "--key-id", "k", "--operator", "o"], cwd=REPO, capture_output=True, text=True, check=True)
     os.chmod(tmp_path, 0o755)
     os.chown(key, 0, 0)

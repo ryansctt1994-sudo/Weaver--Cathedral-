@@ -5,7 +5,7 @@
 3. os_permissions: an unprivileged user cannot write a root-owned file, or
    the check is reported as skipped when this process is not root.
 
-Run: python -m runtime.claude_code_gate.boundary_demo
+Run: python -m runtime.claude_code_role_gate.boundary_demo
 """
 
 from __future__ import annotations
@@ -18,7 +18,7 @@ import sys
 import tempfile
 from pathlib import Path
 
-from runtime.claude_code_gate.policy import decide
+from runtime.claude_code_role_gate.policy import decide
 
 PROTECTED_REL = Path(".claude") / "settings.json"
 

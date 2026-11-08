@@ -34,7 +34,7 @@ jobs:
 
       - name: G3 tests must run, not skip (R7)
         run: |
-          sudo -E env "PATH=$PATH" python -m pytest -q -p no:cacheprovider tests/test_claude_code_gate_override.py --junitxml=g3-junit.xml
+          sudo -E env "PATH=$PATH" python -m pytest -q -p no:cacheprovider tests/test_claude_code_role_gate_override.py --junitxml=g3-junit.xml
           python - <<'PY'
           import xml.etree.ElementTree as ET
           suite = ET.parse("g3-junit.xml").getroot()

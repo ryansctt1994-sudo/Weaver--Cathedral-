@@ -9,7 +9,7 @@ version, changes the digest, so outstanding overrides fail with
 Inventory (v0.3 §6, with additions marked; the reviewer confirms completeness
 before freeze):
 
-* runtime/claude_code_gate: policy.py, hook.py, override.py, gate.sh,
+* runtime/claude_code_role_gate: policy.py, hook.py, override.py, gate.sh,
   plus trusted_root.py, registry.py, manifest.py and __init__.py [additions:
   modules the candidate's hook imports]
 * core/authority: canonical.py, gate.py, replay.py, plus chronicle.py,
@@ -22,7 +22,7 @@ Excluded: operator.py (operator-side tool, not in the hook's path), the key
 registry (pinned separately, changes by design), managed settings and the
 anchor (the trust root cannot sit inside its own digest).
 
-tests/test_claude_code_gate_override.py checks that every repository module
+tests/test_claude_code_role_gate_override.py checks that every repository module
 the hook imports appears in MANIFEST_FILES (mutation M-D2).
 """
 
@@ -33,7 +33,7 @@ from hashlib import sha256
 from pathlib import Path
 
 from core.authority.canonical import JCS_RFC8785, canonicalize
-from runtime.claude_code_gate.policy import POLICY_VERSION
+from runtime.claude_code_role_gate.policy import POLICY_VERSION
 
 MANIFEST_SCHEMA = "weaver.gate.enforcement_manifest.v1"
 CODE_ROOT = Path(__file__).resolve().parents[2]
@@ -49,14 +49,14 @@ MANIFEST_FILES = (
     "core/authority/replay.py",
     "core/authority/verifier.py",
     "runtime/__init__.py",
-    "runtime/claude_code_gate/__init__.py",
-    "runtime/claude_code_gate/gate.sh",
-    "runtime/claude_code_gate/hook.py",
-    "runtime/claude_code_gate/manifest.py",
-    "runtime/claude_code_gate/override.py",
-    "runtime/claude_code_gate/policy.py",
-    "runtime/claude_code_gate/registry.py",
-    "runtime/claude_code_gate/trusted_root.py",
+    "runtime/claude_code_role_gate/__init__.py",
+    "runtime/claude_code_role_gate/gate.sh",
+    "runtime/claude_code_role_gate/hook.py",
+    "runtime/claude_code_role_gate/manifest.py",
+    "runtime/claude_code_role_gate/override.py",
+    "runtime/claude_code_role_gate/policy.py",
+    "runtime/claude_code_role_gate/registry.py",
+    "runtime/claude_code_role_gate/trusted_root.py",
 )
 
 

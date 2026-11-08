@@ -44,16 +44,16 @@ from typing import Any, Callable, Mapping, TextIO
 from core.authority.chronicle import Chronicle
 from core.authority.gate import UncertaintyGate, request_hash
 from core.authority.replay import ReplayStoreError, SqliteReplayStore
-from runtime.claude_code_gate import manifest as enforcement_manifest
-from runtime.claude_code_gate import override as operator_override
-from runtime.claude_code_gate import registry as key_registry
-from runtime.claude_code_gate import trusted_root
-from runtime.claude_code_gate.policy import POLICY_VERSION, decide, effective_permissions
+from runtime.claude_code_role_gate import manifest as enforcement_manifest
+from runtime.claude_code_role_gate import override as operator_override
+from runtime.claude_code_role_gate import registry as key_registry
+from runtime.claude_code_role_gate import trusted_root
+from runtime.claude_code_role_gate.policy import POLICY_VERSION, decide, effective_permissions
 
 THRESHOLD = 0.7
 STATE_DIR = Path(".weaver") / "gate"
-DENIAL_SCHEMA = "weaver.claude_code_gate.denial.v2"
-PENDING_SCHEMA = "weaver.claude_code_gate.pending_override.v1"
+DENIAL_SCHEMA = "weaver.claude_code_role_gate.denial.v2"
+PENDING_SCHEMA = "weaver.claude_code_role_gate.pending_override.v1"
 DEFAULT_LOCK_TIMEOUT_S = 5.0
 DEFAULT_NONCE_TIMEOUT_S = 2.0
 

@@ -26,8 +26,8 @@ import sys
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
 
-from runtime.claude_code_gate.override import MAX_LIFETIME, _crypto, sign
-from runtime.claude_code_gate.registry import fingerprint
+from runtime.claude_code_role_gate.override import MAX_LIFETIME, _crypto, sign
+from runtime.claude_code_role_gate.registry import fingerprint
 
 
 def keygen(private_path: Path, key_id: str, operator_id: str, days: float) -> dict:

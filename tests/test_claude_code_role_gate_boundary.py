@@ -26,7 +26,7 @@ from pathlib import Path
 
 import pytest
 
-from runtime.claude_code_gate.policy import decide
+from runtime.claude_code_role_gate.policy import decide
 
 REPO = Path(__file__).resolve().parents[1]
 PROTECTED_REL = Path(".claude") / "settings.json"
@@ -78,7 +78,7 @@ def test_operating_system_permissions_stop_an_unprivileged_writer():
 def test_boundary_demo_script_runs_the_layers_and_reports_them():
     # The demo prints the three results as JSON so a person can read the boundary.
     result = subprocess.run(
-        [sys.executable, "-m", "runtime.claude_code_gate.boundary_demo"],
+        [sys.executable, "-m", "runtime.claude_code_role_gate.boundary_demo"],
         cwd=REPO, capture_output=True, text=True,
     )
     assert result.returncode == 0, result.stderr

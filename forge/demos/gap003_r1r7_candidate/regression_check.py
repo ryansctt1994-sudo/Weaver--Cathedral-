@@ -35,13 +35,13 @@ sys.path.insert(0, str(REPO))
 from cryptography.hazmat.primitives.asymmetric.ed25519 import Ed25519PrivateKey  # noqa: E402
 
 from core.authority.gate import request_hash  # noqa: E402
-from runtime.claude_code_gate.manifest import policy_digest  # noqa: E402
-from runtime.claude_code_gate.override import LiveContext, sign  # noqa: E402
-from runtime.claude_code_gate.policy import decide  # noqa: E402
-from runtime.claude_code_gate.registry import fingerprint  # noqa: E402
-from runtime.claude_code_gate.trusted_root import write_anchor  # noqa: E402
+from runtime.claude_code_role_gate.manifest import policy_digest  # noqa: E402
+from runtime.claude_code_role_gate.override import LiveContext, sign  # noqa: E402
+from runtime.claude_code_role_gate.policy import decide  # noqa: E402
+from runtime.claude_code_role_gate.registry import fingerprint  # noqa: E402
+from runtime.claude_code_role_gate.trusted_root import write_anchor  # noqa: E402
 
-GATE = REPO / "runtime" / "claude_code_gate" / "gate.sh"
+GATE = REPO / "runtime" / "claude_code_role_gate" / "gate.sh"
 REQ = re.compile(r"request ([0-9a-f]{64})")
 
 SCENARIOS = [

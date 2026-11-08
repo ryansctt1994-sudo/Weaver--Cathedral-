@@ -13,12 +13,12 @@ from pathlib import Path
 import pytest
 
 from core.authority.chronicle import verify_file
-from runtime.claude_code_gate.hook import resolve_role
-from runtime.claude_code_gate.policy import POLICY_VERSION, PROTECTED_PREFIXES, ROLE_PERMISSIONS, decide, path_identity
-from runtime.claude_code_gate.trusted_root import write_anchor
+from runtime.claude_code_role_gate.hook import resolve_role
+from runtime.claude_code_role_gate.policy import POLICY_VERSION, PROTECTED_PREFIXES, ROLE_PERMISSIONS, decide, path_identity
+from runtime.claude_code_role_gate.trusted_root import write_anchor
 
 REPO = Path(__file__).resolve().parents[1]
-GATE_SH = REPO / "runtime" / "claude_code_gate" / "gate.sh"
+GATE_SH = REPO / "runtime" / "claude_code_role_gate" / "gate.sh"
 CHRONICLE = Path(".weaver") / "gate" / "chronicle.jsonl"
 ROLES = sorted(ROLE_PERMISSIONS)
 
@@ -61,7 +61,7 @@ def run_hook(project, body, role="Builder", extra_env=None):
     env.update(extra_env or {})
     text = body if isinstance(body, str) else json.dumps(body)
     return subprocess.run(
-        [sys.executable, "-m", "runtime.claude_code_gate.hook"],
+        [sys.executable, "-m", "runtime.claude_code_role_gate.hook"],
         input=text, capture_output=True, text=True, cwd=REPO, env=env,
     )
 
@@ -164,8 +164,8 @@ VETOED_PATH_CALLS = [
     ("Edit", {"file_path": ".claude/settings.json"}),
     ("Write", {"file_path": ".claude/settings.local.json"}),
     ("Write", {"file_path": ".weaver/gate/chronicle.jsonl"}),
-    ("Edit", {"file_path": "runtime/claude_code_gate/policy.py"}),
-    ("Write", {"file_path": "runtime/claude_code_gate/gate.sh"}),
+    ("Edit", {"file_path": "runtime/claude_code_role_gate/policy.py"}),
+    ("Write", {"file_path": "runtime/claude_code_role_gate/gate.sh"}),
     ("Edit", {"file_path": ".git/config"}),
     ("Edit", {"file_path": "src/../.claude/settings.json"}),
     ("Write", {"file_path": "/tmp/outside"}),
@@ -202,7 +202,7 @@ def test_nul_byte_in_path_raises_rather_than_passing(project):
 
 
 def test_protected_prefixes_cover_gate_state_settings_and_git():
-    assert {".claude", ".weaver", ".git", "runtime/claude_code_gate"} <= set(PROTECTED_PREFIXES)
+    assert {".claude", ".weaver", ".git", "runtime/claude_code_role_gate"} <= set(PROTECTED_PREFIXES)
 
 
 # --- Bash rules (Verifier, Builder and Planner alike) ---------------------------
@@ -227,7 +227,7 @@ BASH_VETOED = [
     "cat .claude/settings.json",
     "cat .weaver/gate/chronicle.jsonl",
     "cat .git/config",
-    "cat runtime/claude_code_gate/policy.py",
+    "cat runtime/claude_code_role_gate/policy.py",
     "cat src/.claude/settings.json",
     "cat /etc/passwd",
     "ls ~",
@@ -299,7 +299,7 @@ def test_vetoed_call_exits_two_and_writes_a_structured_denial(project):
     assert entry["data"]["decision"] == "VETO"
     denial = entry["data"]["context"]["denial"]
     assert denial == {
-        "schema": "weaver.claude_code_gate.denial.v2",
+        "schema": "weaver.claude_code_role_gate.denial.v2",
         "role": "Builder",
         "ceiling": "Builder",
         "agent_id": None,

@@ -7,7 +7,7 @@
 # 0 (allow) and 2 (veto) to 2.
 here="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
 export PYTHONPATH="$here${PYTHONPATH:+:$PYTHONPATH}"
-python3 -m runtime.claude_code_gate.hook
+python3 -m runtime.claude_code_role_gate.hook
 rc=$?
 case "$rc" in
   0|2) exit "$rc" ;;

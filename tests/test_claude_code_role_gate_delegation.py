@@ -1,6 +1,6 @@
 """GAP-003-G2: checks on the committed delegation evidence.
 
-The live check (runtime/claude_code_gate/delegation_check.py) drives the real
+The live check (runtime/claude_code_role_gate/delegation_check.py) drives the real
 Claude Code CLI and needs its credentials, so it does not run in CI. These tests
 check the report it produced: that every claim in the status is backed by
 records in the report, not just by the status field.
@@ -55,7 +55,7 @@ def test_report_was_produced_by_the_baseline_policy(report):
 
 
 def test_report_does_not_cover_the_current_policy():
-    policy = REPO / "runtime" / "claude_code_gate" / "policy.py"
+    policy = REPO / "runtime" / "claude_code_role_gate" / "policy.py"
     assert hashlib.sha256(policy.read_bytes()).hexdigest() != BASELINE_POLICY_SHA256, (
         "policy.py matches the baseline again; revisit whether the G2 evidence covers it")
 
@@ -125,6 +125,8 @@ def test_gate_decisions_are_chronicled_with_policy_version_role_and_ceiling(repo
             assert ctx["policy_version"].startswith("weaver.claude_code_policy.")
             assert "role" in ctx and "ceiling" in ctx
             if entry["decision"] == "VETO":
+                # Historical G2 evidence from the baseline, recorded before the package
+                # was renamed: its schema name stays as it was written.
                 assert ctx["denial"]["schema"] == "weaver.claude_code_gate.denial.v1"
 
 
@@ -148,7 +150,7 @@ def test_hook_inputs_carry_no_unredacted_credential_fields(report):
 def test_live_delegation_check(tmp_path):
     out = tmp_path / "report.json"
     result = subprocess.run(
-        [sys.executable, "-m", "runtime.claude_code_gate.delegation_check", "--json", str(out)],
+        [sys.executable, "-m", "runtime.claude_code_role_gate.delegation_check", "--json", str(out)],
         cwd=REPO, capture_output=True, text=True, timeout=3600,
     )
     assert result.returncode == 0, result.stdout[-2000:]

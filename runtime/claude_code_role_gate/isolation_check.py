@@ -23,7 +23,7 @@ pass says nothing about a deployed environment, which needs its own check.
 
 Needs root (to set ownership and switch identity) and runuser.
 
-Run: python -m runtime.claude_code_gate.isolation_check [--json PATH]
+Run: python -m runtime.claude_code_role_gate.isolation_check [--json PATH]
 """
 
 from __future__ import annotations
@@ -44,11 +44,11 @@ from typing import Any
 
 PROTECTED_FILES = (
     ".claude/settings.json",
-    "runtime/claude_code_gate/policy.py",
+    "runtime/claude_code_role_gate/policy.py",
     ".weaver/gate/chronicle.jsonl",
 )
 SETTINGS = ".claude/settings.json"
-POLICY = "runtime/claude_code_gate/policy.py"
+POLICY = "runtime/claude_code_role_gate/policy.py"
 CHRONICLE = ".weaver/gate/chronicle.jsonl"
 
 
@@ -114,7 +114,7 @@ def build(base: Path, *, protected: bool, agent: pwd.struct_passwd) -> Path:
 
 
 def permissions(root: Path) -> dict[str, Any]:
-    paths = [Path("."), Path(".claude"), Path("runtime/claude_code_gate"), Path(".weaver/gate"), *map(Path, PROTECTED_FILES)]
+    paths = [Path("."), Path(".claude"), Path("runtime/claude_code_role_gate"), Path(".weaver/gate"), *map(Path, PROTECTED_FILES)]
     out = {}
     for rel in paths:
         st = (root / rel).lstat()

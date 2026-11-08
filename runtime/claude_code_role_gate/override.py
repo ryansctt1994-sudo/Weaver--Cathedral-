@@ -31,9 +31,9 @@ from typing import Any, Mapping
 
 from core.authority.canonical import JCS_RFC8785, canonicalize
 from core.authority.replay import ReplayStoreError
-from runtime.claude_code_gate import registry as key_registry
+from runtime.claude_code_role_gate import registry as key_registry
 
-OVERRIDE_SCHEMA = "weaver.claude_code_gate.override.v2"
+OVERRIDE_SCHEMA = "weaver.claude_code_role_gate.override.v2"
 MAX_LIFETIME = timedelta(minutes=15)
 CLOCK_SKEW = timedelta(seconds=30)
 SIGNED_FIELDS = (

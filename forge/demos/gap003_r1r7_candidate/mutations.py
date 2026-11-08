@@ -24,7 +24,7 @@ from hashlib import sha256
 from pathlib import Path
 
 REPO = Path(__file__).resolve().parents[3]
-TEST_FILES = ["tests/test_claude_code_gate_override.py", "tests/test_claude_code_gate.py"]
+TEST_FILES = ["tests/test_claude_code_role_gate_override.py", "tests/test_claude_code_role_gate.py"]
 
 HOOK_ROOT_BLOCK = """        anchor = trusted_root.load_anchor(anchor_path)
         root = trusted_root.establish_root(anchor, env)
@@ -38,11 +38,11 @@ HOOK_ROOT_BASELINE = """        anchor = trusted_root.load_anchor(anchor_path)
     root = Path(env.get("CLAUDE_PROJECT_DIR") or payload.get("cwd") or os.getcwd())
 """
 
-POLICY = "runtime/claude_code_gate/policy.py"
-HOOK = "runtime/claude_code_gate/hook.py"
-OVERRIDE = "runtime/claude_code_gate/override.py"
-REGISTRY = "runtime/claude_code_gate/registry.py"
-MANIFEST = "runtime/claude_code_gate/manifest.py"
+POLICY = "runtime/claude_code_role_gate/policy.py"
+HOOK = "runtime/claude_code_role_gate/hook.py"
+OVERRIDE = "runtime/claude_code_role_gate/override.py"
+REGISTRY = "runtime/claude_code_role_gate/registry.py"
+MANIFEST = "runtime/claude_code_role_gate/manifest.py"
 
 MUTANTS = [
     {
@@ -171,7 +171,7 @@ def missing_cryptography(dst: Path) -> dict:
     shim = dst / "_no_crypto"
     (shim / "cryptography").mkdir(parents=True)
     (shim / "cryptography" / "__init__.py").write_text("raise ImportError('cryptography removed by mutant M-D')\n")
-    env_cmd = [sys.executable, "-m", "pytest", "-q", "-p", "no:cacheprovider", "tests/test_claude_code_gate_override.py"]
+    env_cmd = [sys.executable, "-m", "pytest", "-q", "-p", "no:cacheprovider", "tests/test_claude_code_role_gate_override.py"]
     res = subprocess.run(env_cmd, cwd=dst, capture_output=True, text=True, timeout=600,
                          env={"PATH": "/usr/bin:/bin:/usr/local/bin", "PYTHONPATH": str(shim)})
     out = res.stdout + res.stderr
