@@ -70,6 +70,16 @@ def digest(p: Path) -> str | None:
     return sha256(p.read_bytes()).hexdigest() if p.is_file() else None
 
 
+def tree(*roots: Path) -> dict:
+    """SHA-256 of every file under the roots, excluding the gate's own state."""
+    out = {}
+    for root in roots:
+        for p in sorted(root.rglob("*")):
+            if p.is_file() and ".weaver" not in p.relative_to(root).parts:
+                out[f"{root.name}/{p.relative_to(root).as_posix()}"] = digest(p)
+    return out
+
+
 def build(base: Path, sc: Scenario) -> tuple[Path, Path, Path]:
     project, outside, anchor_dir = base / "project", base / "outside", base / "anchor"
     for d in (project / "src", project / ".claude", outside, anchor_dir):
@@ -96,13 +106,30 @@ def run_once(sc: Scenario) -> dict:
         project, outside, settings = build(base, sc)
         target = outside / "target.txt" if sc.target == "OUTSIDE" else project / sc.target
         before = digest(target)
+        files_before = tree(project, outside)
         prompt = sc.prompt.replace("{outside}", str(outside / "target.txt")) + SUFFIX
-        proc = subprocess.run(["claude", "--settings", str(settings), "-p", prompt, "--permission-mode", "acceptEdits",
-                               "--max-turns", "4"], cwd=project, stdin=subprocess.DEVNULL, capture_output=True,
-                              text=True, timeout=300)
+        argv = ["claude", "--settings", str(settings), "-p", prompt, "--permission-mode", "acceptEdits", "--max-turns", "4"]
+        proc = subprocess.run(argv, cwd=project, stdin=subprocess.DEVNULL, capture_output=True, text=True, timeout=300)
         after = digest(target)
+        files_after = tree(project, outside)
         chron = project / ".weaver" / "gate" / "chronicle.jsonl"
-        entries = [json.loads(line)["data"] for line in chron.read_text().splitlines()] if chron.exists() else []
+        raw = [json.loads(line) for line in chron.read_text().splitlines()] if chron.exists() else []
+        entries = [e["data"] for e in raw]
+        anchor = base / "anchor" / "anchor.json"
+        identity = {
+            "argv": [a if a != str(settings) else "<session_settings.json>" for a in argv],
+            "prompt": prompt,
+            "session_settings": json.loads(settings.read_text()),
+            "session_settings_sha256": digest(settings),
+            "anchor": json.loads(anchor.read_text()),
+            "anchor_sha256": digest(anchor),
+            "anchor_owner_mode": oct(anchor.stat().st_mode & 0o777) + f" uid={anchor.stat().st_uid}",
+            "chronicle_sha256": digest(chron),
+            "chronicle_head": raw[-1]["entry_hash"] if raw else None,
+            "chronicle_entries": raw,
+            "files_before": files_before,
+            "files_after": files_after,
+        }
         calls = [{"tool": e["context"].get("tool"), "decision": e["decision"], "rule": e["context"].get("rule"),
                   "target": e["context"].get("target"), "role": e["context"].get("role")} for e in entries]
         matching = [c for c in calls if c["tool"] == sc.tool]
@@ -118,7 +145,7 @@ def run_once(sc: Scenario) -> dict:
         else:
             verdict = "inconsistent"  # a veto recorded but the file changed, or similar
         rules = sorted({c["rule"] for c in matching if c["decision"] == "VETO"})
-        return {"verdict": verdict, "veto_rules": rules, "target_changed": changed,
+        return {"verdict": verdict, "veto_rules": rules, "target_changed": changed, "receipt": identity,
                 "target_sha256_before": before, "target_sha256_after": after,
                 "gate_calls": calls, "cli_exit_code": proc.returncode,
                 "cli_final_text": re.sub(r"/tmp/mediation-[^/\s]+", "<tmp>", proc.stdout.strip()[-300:])}
@@ -147,9 +174,13 @@ def main() -> int:
     report = {"schema": "weaver.gap003.live_mediation.v1",
               "classification": "IMPLEMENTER_RUN (not R8); project-level hook only; L-1/L-2 not tested",
               "claude_code_version": version, "generated_utc": datetime.now(timezone.utc).isoformat(),
-              "gate_sh_sha256": sha256(GATE.read_bytes()).hexdigest(), "scenarios": results,
+              "gate_sh_sha256": sha256(GATE.read_bytes()).hexdigest(),
+              "repo_commit": subprocess.run(["git", "rev-parse", "HEAD"], cwd=REPO, capture_output=True, text=True).stdout.strip(),
+              "policy_sha256": sha256((REPO / "runtime/claude_code_role_gate/policy.py").read_bytes()).hexdigest(),
+              "hook_sha256": sha256((REPO / "runtime/claude_code_role_gate/hook.py").read_bytes()).hexdigest(),
+              "scenarios": results,
               "all_meet_expectation": all(r["meets_expectation"] for r in results)}
-    args.out.write_text(json.dumps(report, indent=2, sort_keys=True) + "\n")
+    args.out.write_text(re.sub(r"/tmp/mediation-[^/\"]+", "<tmp>", json.dumps(report, indent=2, sort_keys=True)) + "\n")
     print("all_meet_expectation:", report["all_meet_expectation"])
     return 0 if report["all_meet_expectation"] else 1
 
