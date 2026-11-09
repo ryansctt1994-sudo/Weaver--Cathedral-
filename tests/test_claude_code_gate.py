@@ -457,3 +457,68 @@ def test_console_script_is_not_shadowed_by_the_project(tmp_path):
     installed = f"{script} pre-tool-use --config {config} || exit 2"
     result = subprocess.run(["sh", "-c", installed], cwd=project, input=event, capture_output=True, text=True)
     assert result.returncode == 0, result.stderr
+
+
+# --- Adversarial JSON intake: ambiguity must never authorize tool use --------
+
+
+@pytest.mark.parametrize(
+    "raw",
+    [
+        '{"hook_event_name":"PreToolUse","tool_name":"Edit","tool_name":"Read","tool_input":{"file_path":"/ordinary.txt"}}',
+        '{"hook_event_name":"PreToolUse","tool_name":"Read","tool_input":{"file_path":".claude/settings.json","file_path":"/ordinary.txt"}}',
+        '{"hook_event_name":"PreToolUse","tool_name":"Read","tool_input":{"file_path":"/x","metadata":{"a":1,"a":2}}}',
+        '{"hook_event_name":"PreToolUse","tool_name":"Read","tool_input":{"score":NaN}}',
+        '{"hook_event_name":"PreToolUse","tool_name":"Read","tool_input":{"score":Infinity}}',
+        '{"hook_event_name":"PreToolUse","tool_name":"Read","tool_input":{"score":-Infinity}}',
+    ],
+)
+def test_ambiguous_hook_json_is_blocked_without_receipt(tmp_path, raw):
+    config = make_config(tmp_path)
+    assert hook(config, raw=raw) == 2
+    assert not load_config(config).chronicle_path.exists()
+
+
+def test_duplicate_config_key_cannot_shadow_a_stricter_policy(tmp_path):
+    config = make_config(tmp_path)
+    original = config.read_text(encoding="utf-8")
+    assert '"threshold":' in original
+    config.write_text(original.replace('"threshold":', '"threshold": 0.01, "threshold":', 1))
+    with pytest.raises(GateConfigError, match="duplicate"):
+        load_config(config)
+    assert hook(config, "Read", {"file_path": "/ordinary.txt"}) == 2
+
+
+def test_nonfinite_config_is_refused_not_silently_coerced(tmp_path):
+    config = make_config(tmp_path)
+    text = config.read_text(encoding="utf-8")
+    config.write_text(text.replace('"threshold": 0.7', '"threshold": NaN'))
+    with pytest.raises(GateConfigError):
+        load_config(config)
+
+
+def test_override_json_duplicate_nonce_is_rejected_before_replay_store(tmp_path):
+    from runtime.claude_code_gate.hook import HookError, _load_override
+    config = make_config(tmp_path, with_key=True)
+    loaded = load_config(config)
+    digest = "a" * 64
+    loaded.overrides_dir.mkdir(parents=True)
+    (loaded.overrides_dir / f"{digest}.json").write_text(
+        '{"nonce":"first","nonce":"second","signature":"not-checked"}'
+    )
+    with pytest.raises(HookError, match="unreadable"):
+        _load_override(loaded, digest)
+    assert not loaded.replay_path.exists()
+
+
+def test_nested_override_nonfinite_refused_before_verification(tmp_path):
+    from runtime.claude_code_gate.hook import HookError, _load_override
+    config = make_config(tmp_path, with_key=True)
+    loaded = load_config(config)
+    digest = "b" * 64
+    loaded.overrides_dir.mkdir(parents=True)
+    (loaded.overrides_dir / f"{digest}.json").write_text(
+        '{"nonce":"good","extra":{"untrusted":NaN}}'
+    )
+    with pytest.raises(HookError, match="unreadable"):
+        _load_override(loaded, digest)
