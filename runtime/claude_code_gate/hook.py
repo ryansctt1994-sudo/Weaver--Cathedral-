@@ -42,6 +42,7 @@ from core.authority.chronicle import Chronicle, verify_entries, verify_file
 from core.authority.gate import GateDecision, GateRecord, UncertaintyGate, request_hash, sign_override
 from core.authority.replay import SqliteReplayStore
 
+from .json_strict import strict_loads
 from .policy import GateConfig, Match, load_config
 
 ADAPTER_ID = "weaver.claude_code_gate.v1"
@@ -90,7 +91,7 @@ def read_override_key(config: GateConfig) -> bytes | None:
 
 def _parse_payload(text: str) -> tuple[str, dict[str, Any], str | None]:
     try:
-        payload = json.loads(text)
+        payload = strict_loads(text)
     except ValueError as exc:
         raise HookError("hook input is not JSON") from exc
     if not isinstance(payload, dict):
@@ -111,7 +112,7 @@ def _load_override(config: GateConfig, req_hash: str) -> Any:
     if not path.is_file():
         return None
     try:
-        return json.loads(path.read_text(encoding="utf-8"))
+        return strict_loads(path.read_text(encoding="utf-8"))
     except (OSError, ValueError) as exc:
         raise HookError(f"override file for this call is unreadable ({type(exc).__name__})") from exc
 
