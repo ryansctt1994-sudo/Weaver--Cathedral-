@@ -492,7 +492,8 @@ def test_duplicate_config_key_cannot_shadow_a_stricter_policy(tmp_path):
 def test_nonfinite_config_is_refused_not_silently_coerced(tmp_path):
     config = make_config(tmp_path)
     text = config.read_text(encoding="utf-8")
-    config.write_text(text.replace('"threshold": 0.7', '"threshold": NaN'))
+    assert '"threshold": 0.5' in text
+    config.write_text(text.replace('"threshold": 0.5', '"threshold": NaN', 1))
     with pytest.raises(GateConfigError):
         load_config(config)
 
