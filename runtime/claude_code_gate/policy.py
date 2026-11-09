@@ -34,6 +34,8 @@ from datetime import timedelta
 from pathlib import Path
 from typing import Any, Iterator, Mapping
 
+from .json_strict import strict_loads
+
 SCHEMA = "weaver.claude_code_gate.config.v1"
 PATH_FIELDS = ("file_path", "path", "notebook_path")
 SETTINGS_NAMES = ("settings.json", "settings.local.json")
@@ -214,7 +216,7 @@ def load_config(path: str | Path) -> GateConfig:
     config_path = Path(os.path.realpath(os.path.expanduser(str(path))))
     try:
         raw = config_path.read_bytes()
-        data = json.loads(raw)
+        data = strict_loads(raw)
     except (OSError, ValueError) as exc:
         raise GateConfigError(f"cannot read config {config_path}: {exc}") from exc
     if not isinstance(data, dict) or not _REQUIRED <= set(data) <= _REQUIRED | _OPTIONAL:
