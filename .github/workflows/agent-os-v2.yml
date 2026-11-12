@@ -1,0 +1,25 @@
+name: agent-os-v2
+
+on:
+  push:
+  pull_request:
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/checkout@v4
+        with:
+          repository: ryansctt1994-sudo/Weaver_Os
+          ref: codex/v2-assurance-core
+          path: _assurance
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Install assurance core
+        run: python -m pip install -e "_assurance/packages/assurance-core"
+      - run: python -m pip install -e ".[dev]"
+        working-directory: packages/agent-os
+      - run: pytest -q
+        working-directory: packages/agent-os
