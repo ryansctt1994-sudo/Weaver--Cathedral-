@@ -37,6 +37,11 @@ from typing import Any, Iterator, Mapping
 SCHEMA = "weaver.claude_code_gate.config.v1"
 PATH_FIELDS = ("file_path", "path", "notebook_path")
 SETTINGS_NAMES = ("settings.json", "settings.local.json")
+# Vetoes that are final. A protected path guards the gate itself (its config,
+# state, key) and Claude Code's settings, where the hook is installed. Letting
+# an override lift those would let one signed call disable or rewrite the gate.
+PROTECTED_RULE_ID = "builtin:protected-path"
+TERMINAL_RULES = frozenset({PROTECTED_RULE_ID})
 MAX_OVERRIDE_AGE_S = 3600
 
 _REQUIRED = {"schema", "threshold", "default_uncertainty", "state_dir", "rules"}
@@ -54,6 +59,11 @@ class Match:
     rule_id: str
     uncertainty: float
     reason: str
+
+    @property
+    def overridable(self) -> bool:
+        """False for a protected-path veto. An operator override never lifts it."""
+        return self.rule_id not in TERMINAL_RULES
 
 
 @dataclass(frozen=True)
@@ -110,7 +120,7 @@ class GateConfig:
     def classify(self, tool_name: str, tool_input: Mapping[str, Any]) -> Match:
         hit = self.protected_hit(tool_input)
         if hit is not None:
-            return Match("builtin:protected-path", 1.0, f"touches a protected path ({hit})")
+            return Match(PROTECTED_RULE_ID, 1.0, f"touches a protected path ({hit})")
         for rule in self.rules:
             if rule.matches(tool_name, tool_input):
                 return Match(rule.id, rule.uncertainty, rule.reason)
