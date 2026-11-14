@@ -12,6 +12,10 @@ decision to a hash-chained Chronicle.
 - **Anything the hook cannot decide is blocked**: a malformed event, a missing or
   invalid config, an unreadable key, an unwritable state directory, a Chronicle
   that fails verification.
+- **Strict authorization JSON.** Hook events, gate configuration, and signed
+  override files reject duplicate object keys anywhere in the document and
+  reject nonstandard `NaN` / `Infinity` tokens. An ambiguous or invalid
+  message is blocked before any ALLOW decision or replay-nonce consumption.
 
 ## How a call is decided
 
