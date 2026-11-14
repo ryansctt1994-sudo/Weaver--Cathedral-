@@ -23,7 +23,9 @@ from __future__ import annotations
 
 import copy
 import json
+import math
 import os
+import re
 from dataclasses import dataclass
 from datetime import datetime, timezone
 from pathlib import Path
@@ -34,6 +36,34 @@ from .canonical import DEFAULT_PROFILE, PROFILES, CanonicalizationError, profile
 GENESIS_PREV_HASH = "0" * 64
 ENTRY_VERSION = "weaver.chronicle.entry.v1"
 _FIELDS = ("entry_version", "index", "prev_hash", "recorded_at", "kind", "data", "hash_profile", "entry_hash")
+_SHA256 = re.compile(r"[0-9a-f]{64}\Z")
+
+
+def _unique_keys(pairs: list[tuple[str, Any]]) -> dict[str, Any]:
+    parsed: dict[str, Any] = {}
+    for key, value in pairs:
+        if key in parsed:
+            raise ValueError(f"duplicate Chronicle JSON key: {key}")
+        parsed[key] = value
+    return parsed
+
+
+def _reject_constant(value: str) -> None:
+    raise ValueError(f"nonstandard Chronicle JSON constant: {value}")
+
+
+def _finite_float(value: str) -> float:
+    number = float(value)
+    if not math.isfinite(number):
+        raise ValueError("nonfinite Chronicle JSON exponent")
+    return number
+
+
+def _strict_json_entry(line: str) -> Any:
+    return json.loads(
+        line, object_pairs_hook=_unique_keys,
+        parse_constant=_reject_constant, parse_float=_finite_float,
+    )
 
 
 class ChronicleError(RuntimeError):
@@ -70,17 +100,27 @@ def verify_entries(entries: Iterable[dict[str, Any]], expected_head: str | None 
 
         if not isinstance(entry, dict) or set(entry) != set(_FIELDS):
             return bad("malformed_entry")
-        if entry["entry_version"] != ENTRY_VERSION:
+        if type(entry["entry_version"]) is not str or entry["entry_version"] != ENTRY_VERSION:
             return bad("unknown_entry_version")
-        if entry["hash_profile"] not in PROFILES:
+        if type(entry["hash_profile"]) is not str or entry["hash_profile"] not in PROFILES:
             return bad("unknown_hash_profile")
-        if entry["index"] != position:
+        if type(entry["index"]) is not int or entry["index"] != position:
             return bad("index_out_of_sequence")
+        if type(entry["prev_hash"]) is not str or _SHA256.fullmatch(entry["prev_hash"]) is None:
+            return bad("malformed_predecessor_hash")
+        if type(entry["entry_hash"]) is not str or _SHA256.fullmatch(entry["entry_hash"]) is None:
+            return bad("malformed_entry_hash")
+        if type(entry["recorded_at"]) is not str or not entry["recorded_at"]:
+            return bad("malformed_recorded_at")
+        if type(entry["kind"]) is not str or not entry["kind"]:
+            return bad("malformed_kind")
+        if not isinstance(entry["data"], dict):
+            return bad("malformed_data")
         if entry["prev_hash"] != prev:
             return bad("broken_link")
         try:
             recomputed = _entry_hash(entry)
-        except CanonicalizationError:
+        except (CanonicalizationError, TypeError, ValueError, OverflowError):
             return bad("not_canonicalizable")
         if recomputed != entry["entry_hash"]:
             return bad("entry_hash_mismatch")
@@ -96,7 +136,7 @@ class Chronicle:
     """A chronicle in memory, optionally backed by a JSON Lines file."""
 
     def __init__(self, path: str | Path | None = None, *, hash_profile: str = DEFAULT_PROFILE):
-        if hash_profile not in PROFILES:
+        if type(hash_profile) is not str or hash_profile not in PROFILES:
             raise ChronicleError(f"unknown hash profile {hash_profile!r}")
         self.path = Path(path) if path is not None else None
         self.hash_profile = hash_profile
@@ -112,9 +152,9 @@ class Chronicle:
                 if not line.strip():
                     raise ChronicleError(f"{path}:{lineno}: blank line in chronicle")
                 try:
-                    entries.append(json.loads(line))
-                except json.JSONDecodeError as exc:
-                    raise ChronicleError(f"{path}:{lineno}: not JSON ({exc.msg})") from exc
+                    entries.append(_strict_json_entry(line))
+                except (json.JSONDecodeError, ValueError, TypeError, OverflowError) as exc:
+                    raise ChronicleError(f"{path}:{lineno}: invalid JSON ({exc})") from exc
         result = verify_entries(entries)
         if not result.ok:
             raise ChronicleError(f"{path}: chronicle fails verification at index {result.first_bad_index}: {result.reason}")
@@ -133,8 +173,10 @@ class Chronicle:
         return len(self._entries)
 
     def append(self, kind: str, data: dict[str, Any], *, recorded_at: datetime) -> dict[str, Any]:
-        if not kind:
+        if not isinstance(kind, str) or not kind:
             raise ChronicleError("kind must be non-empty")
+        if not isinstance(data, dict):
+            raise ChronicleError("data must be a JSON object")
         entry: dict[str, Any] = {
             "entry_version": ENTRY_VERSION,
             "index": len(self._entries),
@@ -173,7 +215,7 @@ def verify_file(path: str | Path, expected_head: str | None = None) -> Chronicle
     try:
         with Path(path).open(encoding="utf-8") as handle:
             for line in handle:
-                entries.append(json.loads(line))
-    except (OSError, json.JSONDecodeError, UnicodeDecodeError) as exc:
+                entries.append(_strict_json_entry(line))
+    except (OSError, json.JSONDecodeError, UnicodeDecodeError, ValueError, TypeError, OverflowError) as exc:
         return ChronicleVerification(False, len(entries), GENESIS_PREV_HASH, len(entries), f"unreadable: {type(exc).__name__}")
     return verify_entries(entries, expected_head)
