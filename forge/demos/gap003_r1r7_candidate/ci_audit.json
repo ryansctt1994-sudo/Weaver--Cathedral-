@@ -1,0 +1,45 @@
+{
+  "schema": "weaver.gap003.ci_audit.v1",
+  "pr": "ryansctt1994-sudo/Weaver--Cathedral-#15",
+  "note": "Every CI run on the candidate is kept here, failures included. Full logs stay on GitHub (Actions retention applies); they could not be downloaded from the implementer's environment because its network policy blocks the log storage host.",
+  "runs": [
+    {
+      "run_id": 42444617694,
+      "head_sha": "aed33c8c716e2cafe4841b3cc5b8bc2d53a43e73",
+      "conclusion": "failure",
+      "jobs": {
+        "authority-spine (3.13)": "failure",
+        "authority-spine (3.11)": "cancelled (matrix fail-fast after 3.13 failed)",
+        "authority-spine (3.12)": "cancelled (matrix fail-fast after 3.13 failed)",
+        "claim-audit": "success",
+        "bundle-determinism": "skipped (depends on authority-spine)"
+      },
+      "failing_step": "Build and verify evidence bundle",
+      "observed": "bundle.py printed pytest_passed: false and exited 1. Every earlier step in the job passed: sudo test suite, G3 no-skip check, regression check, mutations.",
+      "root_cause": "bundle.py runs the whole suite; that step ran as the non-root runner user, so the role gate's hook tests failed closed on the root-owned anchor requirement. Reproduced locally as nobody: 57 failures.",
+      "fixed_by": "d84af04"
+    },
+    {
+      "run_id": 42445450258,
+      "head_sha": "8b16219d936cb4e9866a6f8977294a63d0800c82",
+      "conclusion": "success",
+      "jobs": {
+        "authority-spine (3.11)": "success",
+        "authority-spine (3.12)": "success",
+        "authority-spine (3.13)": "success",
+        "claim-audit": "success",
+        "bundle-determinism": "success"
+      },
+      "reconciled_from_log": "authority-spine (3.11), job 128623294740",
+      "reconciled": {
+        "suite": "547 passed, 1 skipped (live G2 opt-in)",
+        "g3_no_skip": "58 tests, 0 skipped, 0 errors, 0 failures",
+        "regression_check": "6/6 pass",
+        "mutations": "13/13 caught; M-D caught (collection error, exit 2)",
+        "bundle": "pytest_passed: true; BUNDLE CHECK PASSED",
+        "artifact": "evidence-bundle-py3.11, artifact id 13603277618, zip sha256 5a1ad0faaf31989091ee7696480982ab8869cb88edb04d449ee184ec1e997d11"
+      },
+      "not_reconciled_from_log": "authority-spine 3.12 and 3.13 job logs were not read; their success conclusions come from the check runs."
+    }
+  ]
+}
